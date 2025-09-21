@@ -1,7 +1,7 @@
-use leptos::{
-    config::get_configuration,
-    task::Executor as LeptosExecutor
-};
+use any_spawner::Executor as LeptosExecutor;
+
+use leptos::config::get_configuration;
+
 use leptos_wasi::{
     handler::HandlerError,
     prelude::{IncomingRequest, ResponseOutparam, WasiExecutor},
