@@ -1,25 +1,26 @@
 spin_manifest_version = 2
 
 [application]
-name = "{{project-name}}"
+name = "{{project-name | kebab_case}}"
 version = "0.1.0"
 authors = ["{{authors}}"]
-description = "{{project-description}}"
+description = "A Leptos application running as a Spin Component"
 
 [[trigger.http]]
-route = "{{http-path | http_wildcard}}"
+route = "/..."
 component = "{{project-name | kebab_case}}"
+executor = { type = "http" }
 
 [component.{{project-name | kebab_case}}]
-source = "target/wasm32-wasip1/release/{{project-name | snake_case}}.wasm"
+source = "target/wasm32-wasip2/release/{{project-name | snake_case}}.wasm"
 allowed_outbound_hosts = []
 key_value_stores = ["default"]
 [component.{{project-name | kebab_case}}.build]
-command = "cargo leptos build --release && LEPTOS_OUTPUT_NAME={{project-name | snake_case}} cargo build --lib --target wasm32-wasip1 --release --no-default-features --features ssr"
+command = "cargo leptos build --release && LEPTOS_OUTPUT_NAME={{project-name | snake_case}} cargo build --lib --target wasm32-wasip2 --release --no-default-features --features ssr"
 watch = ["src/**/*.rs", "Cargo.toml"]
 
 [[trigger.http]]
-route = "{{http-path}}/pkg/..."
+route = "/pkg/..."
 component = "{{project-name | kebab_case}}-pkg"
 
 [component.{{project-name | kebab_case}}-pkg]
