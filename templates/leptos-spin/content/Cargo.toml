@@ -2,7 +2,7 @@
 name = "{{project-name | kebab_case}}"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.88.0"
+rust-version = "1.93.0"
 authors = ["{{authors}}"]
 description = "A Leptos application running as a Spin Component"
 
