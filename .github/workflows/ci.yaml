@@ -11,6 +11,9 @@ on:
 jobs:
   test-templates:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [ "1.85.0", "stable" ]
 
     steps:
       - name: Checkout repository
@@ -19,23 +22,20 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: ${{ matrix.rust }}
           targets: wasm32-wasip2, wasm32-unknown-unknown
 
-      - name: Cache cargo-leptos
-        uses: actions/cache@v4
-        id: cache-cargo-leptos
-        with:
-          path: ~/.cargo/bin/cargo-leptos
-          key: ${{ runner.os }}-cargo-leptos
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
 
       - name: Install cargo-leptos
-        if: steps.cache-cargo-leptos.outputs.cache-hit != 'true'
         run: |
-          cargo install --locked cargo-leptos
+          cargo binstall -y cargo-leptos@0.3.6
 
       - name: Install Spin
         uses: fermyon/actions/spin/setup@v1
+        with:
+          version: "v4.0.0"
 
       - name: Install Templates
         run: |
