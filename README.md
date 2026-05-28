@@ -29,10 +29,28 @@ spin new leptos-wasmtime <project-name>
 spin new leptos-spin <project-name>
 ```
 
-## Dependency Configuration
+## Guide: SSR with Leptos WASI & WASIp3
 
-By default, the template Cargo dependencies fetch `leptos_wasi` from the official repository at the specific PR commit hash:
+When developing applications with these templates, keep in mind these key architectural patterns required for running Leptos on WASIp3:
 
-```toml
-leptos_wasi = { git = "https://github.com/leptos-rs/leptos_wasi", rev = "671c8dfb8fa0afc623042ffdf8e155c2748208b5", default-features = false, features = ["wasip3"], optional = true }
+### 1. Host Async Task Scheduling
+Before executing any async work (such as handling requests or rendering templates), you must initialize the host-level async task spawner. This is done at the very beginning of the handler entrypoint:
+```rust
+use leptos_wasi::executor::init_wasip3_spawner;
+
+// Initialize host spawner
+let _ = init_wasip3_spawner();
 ```
+
+### 2. Explicit Server Function Registration
+Unlike native Leptos applications where server functions (`#[server]`) are registered automatically at compile-time, under the WASI target they must be registered **explicitly** on the handler:
+```rust
+let wasi_res = Handler::build(req).await?
+    .with_server_fn_axum::<GetCount>()
+    .with_server_fn_axum::<IncrementCount>()
+    // ...
+```
+If you write a new `#[server]` function, always make sure to call `.with_server_fn_axum::<YourServerFn>()` (or `.with_server_fn::<YourServerFn, _>()` if using the Spin SDK template) on your handler builder.
+
+### 3. Context & Routing
+Use `use_context` instead of `expect_context` within your `#[cfg(feature = "ssr")]` blocks during routing to prevent panics, as components are rendered asynchronously.
