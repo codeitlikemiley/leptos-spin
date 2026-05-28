@@ -35,6 +35,8 @@ jobs:
       - name: Install cargo-leptos
         run: |
           cargo binstall -y cargo-leptos@0.3.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Spin
         uses: fermyon/actions/spin/setup@v1
