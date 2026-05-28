@@ -39,8 +39,8 @@ spin new leptos-spin <project-name>
 
 ## Dependency Configuration
 
-By default, the template Cargo dependencies fetch `leptos_wasi` from the GitHub repository and `wasip3` branch:
+By default, the template Cargo dependencies fetch `leptos_wasi` from the official repository at the specific PR commit hash:
 
 ```toml
-leptos_wasi = { git = "https://github.com/codeitlikemiley/leptos_wasi", branch = "wasip3", default-features = false, features = ["wasip3"], optional = true }
+leptos_wasi = { git = "https://github.com/leptos-rs/leptos_wasi", rev = "671c8dfb8fa0afc623042ffdf8e155c2748208b5", default-features = false, features = ["wasip3"], optional = true }
 ```
