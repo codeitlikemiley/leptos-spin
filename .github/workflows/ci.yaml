@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-templates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: wasm32-wasip2, wasm32-unknown-unknown
+
+      - name: Cache cargo-leptos
+        uses: actions/cache@v4
+        id: cache-cargo-leptos
+        with:
+          path: ~/.cargo/bin/cargo-leptos
+          key: ${{ runner.os }}-cargo-leptos
+
+      - name: Install cargo-leptos
+        if: steps.cache-cargo-leptos.outputs.cache-hit != 'true'
+        run: |
+          cargo install --locked cargo-leptos
+
+      - name: Install Spin
+        uses: fermyon/actions/spin/setup@v1
+
+      - name: Install Templates
+        run: |
+          spin templates install --dir . --upgrade
+
+      - name: Test Scaffold - leptos-wasmtime
+        run: |
+          spin new -t leptos-wasmtime test-wasmtime-app -v project-name=test-wasmtime-app -a
+          cd test-wasmtime-app
+          cargo check
+          cargo check --features ssr
+          cargo check --features hydrate
+
+      - name: Test Scaffold - leptos-spin
+        run: |
+          spin new -t leptos-spin test-spin-app -v project-name=test-spin-app -a
+          cd test-spin-app
+          cargo check
+          cargo check --features ssr
+          cargo check --features hydrate
