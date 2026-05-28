@@ -4,7 +4,7 @@ This project was generated from the `leptos-wasmtime` template. It demonstrates 
 
 ## Prerequisites
 
-- **Rust Toolchain:** Version 1.85.0 or later (required for edition 2024).
+- **Rust Toolchain:** Version 1.93.0 or later (required for edition 2024).
 - **Rust target:** `rustup target add wasm32-wasip2`
 - **Cargo Leptos:** `cargo install --locked cargo-leptos`
 - **Spin CLI:** Version 4.0.0 or later.
