@@ -7,16 +7,18 @@ This repository contains custom Spin templates for bootstrapping [Leptos](https:
 
 ## Installation
 
-You can install these templates locally:
+### Option 1: Local Installation (For Development/Rapid Testing)
+Installing from a local directory is ideal during development when you are making changes to the templates and want to test them immediately without pushing to GitHub:
 
 ```bash
-spin templates install --from /Volumes/goldcoders/leptos-spin
+spin templates install --dir /Volumes/goldcoders/leptos-spin --upgrade
 ```
 
-Or from a Git repository once pushed:
+### Option 2: Remote Installation (From Git)
+Once template changes are pushed, you can install the templates from the Git repository:
 
 ```bash
-spin templates install --git https://github.com/codeitlikemiley/leptos-spin
+spin templates install --git https://github.com/codeitlikemiley/leptos-spin --upgrade
 ```
 
 ## Creating a New Project
