@@ -16,9 +16,7 @@ console_error_panic_hook = "0.1"
 leptos = { version = "0.8.9" }
 leptos_meta = { version = "0.8.5" }
 leptos_router = { version = "0.8.7" }
-# For local development with a local copy of leptos_wasi, you can use the path dependency instead:
-# leptos_wasi = { path = "../leptos_wasi", default-features = false, features = ["wasip3"], optional = true }
-leptos_wasi = { version = "0.3.0", default-features = false, features = ["wasip3"], optional = true }
+leptos_wasi = { git = "https://github.com/codeitlikemiley/leptos_wasi", branch = "wasip3", default-features = false, features = ["wasip3"], optional = true }
 spin-sdk = { version = "6.0.0", optional = true }
 wasi = { version = "=0.13.1", optional = true }
 wasip3 = { version = "0.6.0", features = ["http-compat"], optional = true }
