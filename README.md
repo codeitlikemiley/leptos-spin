@@ -1,7 +1,5 @@
 # Leptos Spin templates
 
-demo...
-
 https://github.com/user-attachments/assets/6596e0f3-80c0-4258-a4e3-f85c41b328b4
 
 This repository contains custom Spin templates for bootstrapping [Leptos](https://leptos.dev) applications running on WASI. It provides two options for WASI runtimes:
