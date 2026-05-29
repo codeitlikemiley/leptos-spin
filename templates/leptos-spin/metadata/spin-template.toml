@@ -3,5 +3,3 @@ id = "leptos-spin"
 description = "Leptos application running as a Spin SDK Component"
 tags = ["rust", "http", "spin", "leptos"]
 
-[parameters]
-project-name = { type = "string", prompt = "Project name" }

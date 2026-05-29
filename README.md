@@ -21,11 +21,11 @@ To create a new project using one of the templates, run:
 
 ### Option 1: Using the Standard WASIp3 Template (Wasmtime/Spin)
 ```bash
-spin new leptos-wasmtime <project-name>
+spin new <project-name> -t leptos-wasmtime
 ```
 
 ### Option 2: Using the Spin SDK (WASIp3) Template
 ```bash
-spin new leptos-spin <project-name>
+spin new <project-name> -t leptos-spin
 ```
 
