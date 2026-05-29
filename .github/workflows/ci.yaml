@@ -49,7 +49,7 @@ jobs:
 
       - name: Test Scaffold - leptos-wasmtime
         run: |
-          spin new test-wasmtime-app -t leptos-wasmtime -a
+          spin new test-wasmtime-app -t leptos-wasmtime
           cd test-wasmtime-app
           cargo check
           cargo check --features ssr
@@ -57,7 +57,7 @@ jobs:
 
       - name: Test Scaffold - leptos-spin
         run: |
-          spin new test-spin-app -t leptos-spin -a
+          spin new test-spin-app -t leptos-spin
           cd test-spin-app
           cargo check
           cargo check --features ssr
