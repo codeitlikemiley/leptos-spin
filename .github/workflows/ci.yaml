@@ -1,39 +1,64 @@
-name: "CI"
+name: CI
+
 on:
   push:
     branches:
-    - main
+      - main
   pull_request:
     branches:
-    - main
-env:
-  RUST_VERSION: "1.80.1"
-  SPIN_VERSION: ""
+      - main
+
 jobs:
-  spin:
-    runs-on: "ubuntu-latest"
-    name: Build Spin App
+  test-templates:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        rust: [ "1.93.0", "stable" ]
+        os: [ "ubuntu-latest", "macos-latest", "windows-latest" ]
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "${{ env.RUST_VERSION }}"
-          targets: wasm32-wasip1,wasm32-unknown-unknown
+          toolchain: ${{ matrix.rust }}
+          targets: wasm32-wasip2, wasm32-unknown-unknown
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install cargo-leptos
+        run: |
+          cargo binstall -y cargo-leptos@0.3.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install Spin
         uses: fermyon/actions/spin/setup@v1
         with:
-          plugins: 
-      - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.10.16
-      - name: Install cargo-leptos
-        run: cargo binstall cargo-leptos@0.2.22
-      - name: Install leptos-ssr template
-        run: spin templates install --dir . --upgrade
-        working-directory: .
-      - name: Create app with template
-        run: spin new -t leptos-ssr my-leptos-app -a
-        working-directory: .
-      - name: Build app
-        run: spin build
-        working-directory: ./my-leptos-app
+          version: "v4.0.0"
+
+      - name: Install Templates
+        run: |
+          spin templates install --dir . --upgrade
+
+      - name: Test Scaffold - leptos-wasmtime
+        run: |
+          spin new test-wasmtime-app -t leptos-wasmtime
+          cd test-wasmtime-app
+          cargo check
+          cargo check --features ssr
+          cargo check --features hydrate
+
+      - name: Test Scaffold - leptos-spin
+        run: |
+          spin new test-spin-app -t leptos-spin
+          cd test-spin-app
+          cargo check
+          cargo check --features ssr
+          cargo check --features hydrate

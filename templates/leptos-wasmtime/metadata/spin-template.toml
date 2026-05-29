@@ -1,0 +1,5 @@
+manifest_version = "1"
+id = "leptos-wasmtime"
+description = "Leptos application running as a WASIp3 Component on Wasmtime/Spin"
+tags = ["rust", "http", "leptos", "wasm"]
+
