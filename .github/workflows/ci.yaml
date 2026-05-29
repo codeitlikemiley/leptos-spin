@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - wasi-p3-templates
   pull_request:
     branches:
       - main
+      - wasi-p3-templates
 
 jobs:
   test-templates:
