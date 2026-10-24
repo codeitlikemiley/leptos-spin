@@ -314,7 +314,18 @@ start_spin() {
   local log_file="$2"
   shift 2
   cleanup_spin
-  log "spin up $(printf '%q ' "$@")in $(basename "$dir")"
+  local redacted=() arg
+  for arg in "$@"; do
+    case "$arg" in
+      *AUTH_TRUSTED_INGRESS_KEY_BASE64=*|*trusted_ingress_key=*)
+        redacted+=("${arg%%=*}=<redacted>")
+        ;;
+      *)
+        redacted+=("$arg")
+        ;;
+    esac
+  done
+  log "spin up $(printf '%q ' "${redacted[@]}")in $(basename "$dir")"
   (
     cd "$dir"
     exec spin up "$@"
@@ -653,7 +664,7 @@ serve_trusted() {
   asset="$(cat "${dir}.pkg-name")"
   local base="http://127.0.0.1:3009"
 
-  start_spin "$dir" "$log_file" -f spin.trusted-ingress.toml
+  start_spin "$dir" "$log_file" -f spin.trusted-ingress.toml --listen 127.0.0.1:3009
   wait_http "${base}/" "$log_file" "${name} trusted-ingress empty key"
   local home_headers="${WORK}/${name}.ingress.home.headers"
   local home_body="${WORK}/${name}.ingress.home.body"
@@ -675,10 +686,18 @@ sys.stdout.reconfigure(encoding="utf-8")
 open(sys.argv[1], "w", encoding="ascii").write(base64.standard_b64encode(os.urandom(32)).decode("ascii"))
 os.chmod(sys.argv[1], 0o600)
 PY
+  local key_value
+  key_value="$(tr -d '[:space:]' <"$key_file")"
+  if [[ "${#key_value}" -ne 44 ]]; then
+    log "FAIL ${name} trusted-ingress key length ${#key_value}; expected 44 standard-base64 characters"
+    exit 1
+  fi
   log "${name} trusted-ingress key is 32 decoded bytes; the value is not logged"
   local keyed_log="${WORK}/${name}.ingress.keyed.spin.log"
-  start_spin "$dir" "$keyed_log" -f spin.trusted-ingress.toml \
-    --variable "trusted_ingress_key=@${key_file}"
+  # Spin 4.2.5 does not expand {{ }} inside component.environment.
+  # --env overrides AUTH_TRUSTED_INGRESS_KEY_BASE64 on every component.
+  start_spin "$dir" "$keyed_log" -f spin.trusted-ingress.toml --listen 127.0.0.1:3009 \
+    --env "AUTH_TRUSTED_INGRESS_KEY_BASE64=${key_value}"
   wait_http "${base}/" "$keyed_log" "${name} trusted-ingress with key"
   local keyed_headers="${WORK}/${name}.ingress.keyed.headers"
   local keyed_body="${WORK}/${name}.ingress.keyed.body"
@@ -714,5 +733,5 @@ serve_trusted check-spin-app
 serve_trusted check-wasmtime-app
 
 log "PASS generated both templates and served standard, middleware, and trusted-ingress guests on Spin 4.2.5"
-log "UNVERIFIED: wac composition, Wasmtime serve, and a live wasi-auth ingress process with PostgreSQL. Tag v0.2.0-alpha.4 is unpublished. A crates.io leptos-wasi-runtime release on wasip3 0.9 is unpublished."
+log "UNVERIFIED: wac composition, Wasmtime serve, and a live wasi-auth ingress process with PostgreSQL. Tag v0.2.0-alpha.4 is unpublished. A crates.io leptos-wasi-runtime release on wasip3 0.9 is unpublished. wasi-auth 0.1.0-rc.6 is unpublished."
 log "evidence: ${EVIDENCE}"

@@ -6,14 +6,13 @@ version = "0.1.0"
 authors = ["{{authors}}"]
 description = "Private Leptos terminal behind the wasi-auth HMAC ingress."
 
-[variables]
-# 32 decoded bytes, standard base64. Inject at runtime. Never commit a key.
-trusted_ingress_key = { required = false, secret = true, default = "" }
-
-# Bind the loopback port the wasi-auth ingress expects as its backend.
-# The public listener is the ingress, not this component.
-[application.trigger.http]
-address = "127.0.0.1:3009"
+# Spin 4.2.5 listens on 127.0.0.1:3000 unless `--listen 127.0.0.1:3009`
+# is set. That flag is the loopback port the wasi-auth ingress expects
+# as its backend. The manifest field `address` is not a listen address.
+# component.environment is copied verbatim. Mustache application
+# variables are not expanded there. Inject the key with
+# `--env AUTH_TRUSTED_INGRESS_KEY_BASE64=...`.
+# That flag is applied to every component, including the fileserver.
 
 # Profile 3 of 3. No composed middleware. The native ingress applies CORS,
 # response security headers, and authentication, then seals an HMAC context.
@@ -32,7 +31,9 @@ LEPTOS_SITE_ROOT = "/site"
 LEPTOS_SITE_PKG_DIR = "pkg"
 AUTH_TRUSTED_INGRESS_AUDIENCE = "fullstack-app"
 AUTH_TRUSTED_INGRESS_MAX_AGE_SECONDS = "5"
-AUTH_TRUSTED_INGRESS_KEY_BASE64 = "{% raw %}{{ trusted_ingress_key }}{% endraw %}"
+# Empty until `spin up --env` replaces it. 32 decoded bytes, standard base64.
+# An empty value cannot verify a credential. Do not commit a key.
+AUTH_TRUSTED_INGRESS_KEY_BASE64 = ""
 [component.{{project-name | kebab_case}}.build]
 command = "cargo leptos build --release --frontend-only && LEPTOS_OUTPUT_NAME={{project-name | snake_case}} cargo build --lib --target wasm32-wasip2 --release --no-default-features --features ssr,trusted-ingress --target-dir target/trusted-ingress"
 watch = ["src/**/*.rs", "Cargo.toml"]

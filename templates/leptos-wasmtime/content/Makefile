@@ -34,7 +34,7 @@ middleware:
 trusted-ingress:
 	@echo "Opt-in only. This profile does not compose middleware."
 	@echo "spin build -f spin.trusted-ingress.toml"
-	@echo "spin up -f spin.trusted-ingress.toml --variable trusted_ingress_key=$$AUTH_TRUSTED_INGRESS_KEY_BASE64"
+	@echo "spin up -f spin.trusted-ingress.toml --listen 127.0.0.1:3009 --env AUTH_TRUSTED_INGRESS_KEY_BASE64=$$AUTH_TRUSTED_INGRESS_KEY_BASE64"
 
 clean:
 	cargo clean

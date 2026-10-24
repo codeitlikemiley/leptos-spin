@@ -43,11 +43,11 @@ The Wasm file is not in this template. The final target is unpublished tag `v0.2
 
 ```bash
 spin build -f spin.trusted-ingress.toml
-spin up -f spin.trusted-ingress.toml \
-  --variable trusted_ingress_key="$AUTH_TRUSTED_INGRESS_KEY_BASE64"
+spin up -f spin.trusted-ingress.toml --listen 127.0.0.1:3009 \
+  --env AUTH_TRUSTED_INGRESS_KEY_BASE64="$AUTH_TRUSTED_INGRESS_KEY_BASE64"
 ```
 
-The key is a Spin secret variable. The manifest default is empty, and an empty key cannot verify a credentialed request. Do not put the key in git.
+Spin 4.2.5 copies `component.environment` verbatim, so a mustache application variable in that table never reaches the guest. The codec reads `AUTH_TRUSTED_INGRESS_KEY_BASE64` from the WASI environment. `--env` replaces that value on every component, including the fileserver. The manifest default is empty, and an empty key cannot verify a credentialed request. Do not put the key in git.
 
 The guest rejects a credential or an envelope that does not verify, then strips `x-wasi-auth-context`, `Authorization`, and `Cookie` before Leptos runs. It does not call `apply_response_security` and it does not compose middleware. Anonymous requests with neither a credential nor an envelope still render, so a private misbind does not invent a second login page. Production should keep this port on loopback; the ingress is the public listener and exempts `/pkg/...`.
 

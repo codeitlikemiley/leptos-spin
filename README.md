@@ -15,7 +15,7 @@ Both generated apps have three deployment profiles. Only the standard profile is
 
 1. **Standard.** `spin.toml`. No middleware pipeline and no HMAC verifier.
 2. **HTTP middleware.** `spin.middleware.toml`. Opt-in. One `secure-defaults` component from `wasi-http-middleware` `3df96c21a7906b885e67229e9a7c8c01b6497109` writes nosniff, referrer policy, and CORS only when that field is absent, so it does not replace the runtime's single nosniff. The guest does not write those headers. Final target is unpublished tag `v0.2.0-alpha.4`. `deploy/compose-middleware.sh` is the Wasmtime plug of that same component and must not be combined with the Spin manifest.
-3. **Trusted ingress.** `spin.trusted-ingress.toml`. A separate guest built with `ssr,trusted-ingress` that verifies HMAC envelopes with `wasi-auth` git `bdfad80372287a3be4215aeefad534098ef6537b` and does not compose middleware. Final target is unpublished `0.1.0-rc.6`.
+3. **Trusted ingress.** `spin.trusted-ingress.toml`. A separate guest built with `ssr,trusted-ingress` that verifies HMAC envelopes with `wasi-auth` git `bdfad80372287a3be4215aeefad534098ef6537b` and does not compose middleware. Final target is unpublished `0.1.0-rc.6`. Spin 4.2.5 does not expand `{{ }}` in `component.environment`; pass the key with `spin up --listen 127.0.0.1:3009 --env AUTH_TRUSTED_INGRESS_KEY_BASE64=...`.
 
 `/pkg/...` is always a separate fileserver trigger so client assets are not wrapped by auth.
 
