@@ -203,10 +203,11 @@ if errors:
 PY
 }
 
-# Resolve once per app. `cargo fetch` writes the lock that metadata checks.
+# `cargo fetch` has no `--features` flag. Metadata resolves the feature
+# set and writes Cargo.lock, which the locked checks below read.
 for app in check-spin-app check-wasmtime-app; do
-  log "fetch ${app}"
-  (cd "${WORK}/${app}" && cargo fetch --features hydrate,ssr,trusted-ingress) >>"$EVIDENCE" 2>&1
+  log "resolve ${app}"
+  (cd "${WORK}/${app}" && cargo metadata --format-version 1 --features hydrate,ssr,trusted-ingress >"${WORK}/${app}.metadata.json") 2>>"$EVIDENCE"
   assert_resolved "${WORK}/${app}" ssr no
   assert_resolved "${WORK}/${app}" "ssr,trusted-ingress" yes
   log "cargo check trusted-ingress feature ${app}"
