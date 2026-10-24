@@ -1,14 +1,14 @@
 # {{project-name}}
 
-Generated from the `leptos-spin` template. The server is a final `wasi:http/handler@0.3.0` component built with `leptos-wasi-runtime` 0.4.2 and `wasip3` 0.7.0. `spin up` runs that component with no middleware and no trusted ingress.
+Generated from the `leptos-spin` template. The server is a final `wasi:http/handler@0.3.0` component. The target guest stack is Leptos 0.8.22, `wasip3` 0.9.0, and `wasm-bindgen` 0.2.129. `spin up` runs that component with no middleware and no trusted ingress.
 
 ## Prerequisites
 
-- Rust 1.99.0 (`rust-toolchain.toml`). The library MSRV is 1.93.0.
+- Rust 1.99.0 (`rust-toolchain.toml`). The declared library MSRV is 1.94.
 - Targets: `wasm32-wasip2`, `wasm32-unknown-unknown`
 - `cargo-leptos` 0.3.7
-- `wasm-bindgen-cli` 0.2.126 (must match the crate pin)
-- Spin 4.2.5 for `spin up`. Wasmtime 46.0.1 is the upstream correctness reference.
+- `wasm-bindgen-cli` 0.2.129 (must match the crate pin)
+- Spin 4.2.5 for `spin up`
 
 ## Standard app
 

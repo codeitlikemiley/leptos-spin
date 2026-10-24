@@ -1,32 +1,54 @@
-# Direct dependency set resolved and runtime-tested by scripts/check-generated-app.sh.
-# Versions are exact. Do not float them: wasip3 0.7.1+ and wasm-bindgen 0.2.129
-# exist on crates.io but are not the set locked by leptos-wasi-runtime 0.4.2.
+# Dependency set declared for generated apps.
 #
-# Rust MSRV of leptos-wasi-runtime 0.4.2 is 1.93.0. The toolchain this
-# repository pins and tests is 1.99.0 (rustc 1.99.0, 2026-09-28).
+# Resolved and runtime-tested rows are filled by scripts/check-generated-app.sh.
+# A row marked UNRESOLVED was not selected by Cargo in that run.
+#
+# Rust toolchain this repository pins and runs is 1.99.0
+# (rustc 1.99.0 (b940084d7 2026-09-28), cargo 1.99.0 (5f94df478 2026-08-27)).
+# Declared package.rust-version is 1.94, from the wasip3 0.9 matrix.
+# Rust 1.93 was not recompiled against wasip3 0.9.0. Rust 1.94 was not
+# re-run in this repository.
 
 [toolchain]
 rust = "1.99.0"
-rust_msrv = "1.93.0"
+rust_msrv = "1.94"
 cargo_leptos = "0.3.7"
-wasm_bindgen_cli = "0.2.126"
+wasm_bindgen_cli = "0.2.129"
 spin = "4.2.5"
-# Wasmtime 46.0.1 is the leptos_wasi 0.4.2 correctness reference.
-# This repository's generation check serves the app with tagged Spin.
+# Wasmtime 46.0.1 is not the Spin 4.2.5 host. This repository does not
+# install it. `make wasmtime` remains a documented command.
 wasmtime_reference = "46.0.1"
 
 [crates]
-leptos = "=0.8.20"
-leptos_meta = "=0.8.6"
-leptos_router = "=0.8.14"
+leptos = "=0.8.22"
+leptos_meta = "=0.8.7"
+leptos_router = "=0.8.17"
+# Transitive from leptos 0.8.22. Not a direct template dependency.
+leptos_macro = "=0.8.19"
 server_fn = "=0.8.13"
-leptos-wasi-runtime = "=0.4.2"
-wasip3 = "=0.7.0"
-wasm-bindgen = "=0.2.126"
+wasip3 = "=0.9.0"
+wasip3_resolved = "0.9.0+wasi-0.3.0"
+wit_bindgen = "=0.62.0"
+wasm-bindgen = "=0.2.129"
 wasi-auth = "=0.1.0-rc.5"
+# Temporary git pin. crates.io spin-sdk 7.0.0 is wasip3 0.7.1.
+# Final target: an upstream spin-sdk release on wasip3 0.9.0.
+spin-sdk = { git = "https://github.com/codeitlikemiley/spin-rust-sdk", rev = "3cf30012b50a1afb750dac3d28aa6da4a32c3468", version = "7.0.0" }
+
+[leptos-wasi-runtime]
+# Final target: crates.io leptos-wasi-runtime once that publish depends on
+# wasip3 =0.9.0 and calls wasip3::spawn_local.
+final_target = "crates.io leptos-wasi-runtime"
+published_0_4_2 = "requires wasip3 =0.7.0 and calls wasip3::spawn"
+# Temporary pin. This commit is the 0.4.2 line and is NOT the wasip3 0.9
+# rev. Agent 5 had not pushed a replacement when this file was written.
+# Cargo cannot unify rev 6727a211 with wasip3 =0.9.0.
+git = "https://github.com/codeitlikemiley/leptos_wasi"
+rev = "6727a211b313e78f6760c3d9378728fdf7a3e91b"
+status = "UNRESOLVED against wasip3 0.9.0 until Agent 5 replaces this rev"
 
 [profiles]
-# Default `spin up` uses only the standard profile.
-standard = "no middleware, no trusted-ingress feature"
-middleware = "opt-in wac composition; not built by spin.toml"
-trusted_ingress = "opt-in HMAC guest; separate manifest and target dir"
+standard = "spin.toml; features ssr; no dependencies.middleware; no HMAC"
+middleware = "spin.middleware.toml; Spin 4.2.5 dependencies.middleware; not started by spin up"
+trusted_ingress = "spin.trusted-ingress.toml; separate target dir; HMAC guest"
+wasmtime_precompose = "deploy/compose-middleware.sh; not used with spin.middleware.toml"

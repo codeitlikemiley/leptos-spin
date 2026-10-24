@@ -32,7 +32,7 @@ LEPTOS_SITE_ROOT = "/site"
 LEPTOS_SITE_PKG_DIR = "pkg"
 AUTH_TRUSTED_INGRESS_AUDIENCE = "fullstack-app"
 AUTH_TRUSTED_INGRESS_MAX_AGE_SECONDS = "5"
-AUTH_TRUSTED_INGRESS_KEY_BASE64 = "{{ trusted_ingress_key }}"
+AUTH_TRUSTED_INGRESS_KEY_BASE64 = "{% raw %}{{ trusted_ingress_key }}{% endraw %}"
 [component.{{project-name | kebab_case}}.build]
 command = "cargo leptos build --release --frontend-only && LEPTOS_OUTPUT_NAME={{project-name | snake_case}} cargo build --lib --target wasm32-wasip2 --release --no-default-features --features ssr,trusted-ingress --target-dir target/trusted-ingress"
 watch = ["src/**/*.rs", "Cargo.toml"]

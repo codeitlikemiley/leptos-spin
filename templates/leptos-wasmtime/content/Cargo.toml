@@ -2,8 +2,10 @@
 name = "{{project-name | kebab_case}}"
 version = "0.1.0"
 edition = "2024"
-# MSRV of leptos-wasi-runtime 0.4.2. The toolchain file pins the tested compiler.
-rust-version = "1.93.0"
+# Declared MSRV matches the wasip3 0.9 stabilization matrix. The toolchain
+# file pins Rust 1.99.0, which is the compiler this repository tests.
+# Rust 1.93 was not recompiled against wasip3 0.9.0.
+rust-version = "1.94"
 authors = ["{{authors}}"]
 description = "A Leptos application running as a WASIp3 component"
 
@@ -12,13 +14,26 @@ crate-type = ["cdylib"]
 
 [dependencies]
 console_error_panic_hook = { version = "0.1", optional = true }
-leptos = { version = "=0.8.20", default-features = false }
-leptos_meta = { version = "=0.8.6", default-features = false }
-leptos_router = { version = "=0.8.14", default-features = false }
-leptos_wasi = { package = "leptos-wasi-runtime", version = "=0.4.2", default-features = false, features = ["wasip3"], optional = true }
+leptos = { version = "=0.8.22", default-features = false }
+leptos_meta = { version = "=0.8.7", default-features = false }
+leptos_router = { version = "=0.8.17", default-features = false }
+# Final target: crates.io `leptos-wasi-runtime` once that publish depends on
+# wasip3 =0.9.0 and calls `wasip3::spawn_local`. Published 0.4.2 (2026-08-05)
+# requires wasip3 =0.7.0. Git HEAD 6727a211 (2026-09-17) is the same 0.4.2
+# line and still calls `wasip3::spawn`. No wasip3 0.9 rev was on
+# codeitlikemiley/leptos_wasi when this template was written, so the pin is
+# that HEAD until Agent 5's rev replaces it. Cargo cannot unify it with
+# wasip3 =0.9.0.
+leptos_wasi = { package = "leptos-wasi-runtime", git = "https://github.com/codeitlikemiley/leptos_wasi", rev = "6727a211b313e78f6760c3d9378728fdf7a3e91b", default-features = false, features = ["wasip3"], optional = true }
 server_fn = { version = "=0.8.13", default-features = false, features = ["axum-no-default"] }
-wasip3 = { version = "=0.7.0", features = ["http-compat"], optional = true }
-wasm-bindgen = { version = "=0.2.126", optional = true }
+# crates.io spin-sdk 7.0.0 is wasip3 0.7.1 (`spawn`). This rev is
+# https://github.com/codeitlikemiley/spin-rust-sdk/pull/1 and exports
+# `spawn_local`. Optional: the `ssr` feature does not link it, so the
+# standard component exports only wasi:http/handler@0.3.0. Final target is
+# an upstream spin-sdk release that depends on wasip3 0.9.0.
+spin-sdk = { git = "https://github.com/codeitlikemiley/spin-rust-sdk", rev = "3cf30012b50a1afb750dac3d28aa6da4a32c3468", version = "7.0.0", optional = true }
+wasip3 = { version = "=0.9.0", features = ["http-compat"], optional = true }
+wasm-bindgen = { version = "=0.2.129", optional = true }
 # Trusted-ingress only. Absent from the default `ssr` build so a standard
 # deploy does not link the HMAC verifier or apply ingress policy.
 base64 = { version = "0.22.1", optional = true }

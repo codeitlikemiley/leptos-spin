@@ -22,8 +22,8 @@ jobs:
       - name: Install cargo-binstall
         run: curl -fsSL https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
-      - name: Install cargo-leptos 0.3.7 and wasm-bindgen-cli 0.2.126
-        run: cargo binstall -y cargo-leptos@0.3.7 wasm-bindgen-cli@0.2.126
+      - name: Install cargo-leptos 0.3.7 and wasm-bindgen-cli 0.2.129
+        run: cargo binstall -y cargo-leptos@0.3.7 wasm-bindgen-cli@0.2.129
 
       - name: Install Spin 4.2.5
         run: |

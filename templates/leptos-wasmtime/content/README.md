@@ -4,10 +4,10 @@ Generated from the `leptos-wasmtime` template. The same final `wasi:http/handler
 
 ## Prerequisites
 
-- Rust 1.99.0 (`rust-toolchain.toml`). The library MSRV is 1.93.0.
+- Rust 1.99.0 (`rust-toolchain.toml`). The declared library MSRV is 1.94.
 - Targets: `wasm32-wasip2`, `wasm32-unknown-unknown`
 - `cargo-leptos` 0.3.7
-- `wasm-bindgen-cli` 0.2.126 (must match the crate pin)
+- `wasm-bindgen-cli` 0.2.129 (must match the crate pin)
 - Wasmtime 46.0.1 (`make wasmtime`) or Spin 4.2.5 (`make spin`)
 
 ## Run

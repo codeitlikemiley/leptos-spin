@@ -5,7 +5,7 @@ Pick one profile. They are separate manifests and separate Wasm artifacts.
 | Profile | Manifest | Guest features | Who applies CORS, security headers, and auth |
 |---|---|---|---|
 | Standard | `spin.toml` | `ssr` | Nobody in the template. `leptos-wasi-runtime` still sets a single `x-content-type-options: nosniff` on its own responses. |
-| Composed middleware | `spin.middleware.toml` | `ssr`, then `deploy/compose-middleware.sh` | The composed components only. Do not enable `trusted-ingress`. |
+| HTTP middleware | `spin.middleware.toml` | `ssr` only. Spin 4.2.5 loads `dependencies.middleware`. | Those middleware components only. Do not enable the HMAC ingress feature, and do not also run `wac`. |
 | Trusted ingress | `spin.trusted-ingress.toml` | `ssr,trusted-ingress` | The native `wasi-auth` ingress. This guest only verifies the HMAC envelope. |
 
 `spin up` and `spin build` read `spin.toml` only.
@@ -18,27 +18,22 @@ spin build --up
 
 The component exports `wasi:http/handler@0.3.0`. `/pkg/...` is a separate fileserver trigger so browser assets are not wrapped by a later policy. The counter is in-memory; durable state stays outside the guest.
 
-Tagged Spin 4.2.5 is what `scripts/check-generated-app.sh` serves. Wasmtime 46.0.1 remains the `leptos_wasi` 0.4.2 correctness reference and is not vendored here.
+Tagged Spin 4.2.5 is the host for generated-app checks. It serves `wasi:http/handler@0.3.0` and composes native `dependencies.middleware`. Wasmtime 46.0.1 is not vendored here.
 
-## 2. Optional composed middleware
+## 2. Optional HTTP middleware
 
-Build the standard component, then plug prebuilt middleware around that Wasm file:
+On Spin 4.2.5, build the standard component and place middleware Wasm next to it, then start the opt-in manifest:
 
 ```bash
 spin build
-./deploy/compose-middleware.sh \
-  target/wasm32-wasip2/release/{{project-name | snake_case}}.wasm \
-  target/wasm32-wasip2/release/{{project-name | snake_case}}-middleware.wasm \
-  path/to/request-id.wasm \
-  path/to/security-headers.wasm \
-  path/to/cors.wasm \
-  path/to/authn-policy.wasm
 spin up -f spin.middleware.toml
 ```
 
-The script refuses any input path containing `trusted-ingress`. Security-headers replaces `nosniff` on the way out; it does not ask the guest to add a second copy. CORS environment variables exist only in `spin.middleware.toml`. The guest source does not read them.
+`dependencies.middleware` runs request-id, then security-headers, then cors, then authn-policy. `/pkg/...` has no middleware entry. CORS variables live on the cors component. Security-headers replaces `nosniff` on the way out. The guest does not read those variables and does not emit CORS.
 
-Those component binaries are not in this template. Build them from `codeitlikemiley/wasi-http-middleware` at `61b41995812220c69c4a10530efb0cd5f7522840`. The intended final target is a signed `wasi-http-middleware` 0.2.0 release. `wac` 0.10.1 is the locked composer. There is no crates.io crate and no GitHub release asset for those components today, so this profile is opt-in source composition, not a default deploy.
+The middleware binaries are not in this template. Build components that import and export `wasi:http/handler@0.3.0` from `codeitlikemiley/wasi-http-middleware` after that repo pins `wasip3` `=0.9.0`. Commit `61b41995812220c69c4a10530efb0cd5f7522840` is still `wasip3` 0.7.0. The intended final target is a signed `wasi-http-middleware` 0.2.0 release. There is no crates.io crate and no GitHub release asset today, so this profile is not what `spin up` runs.
+
+`deploy/compose-middleware.sh` is the Wasmtime precompose path (`wac` 0.10.1). It refuses any input path containing `trusted-ingress`. Serve its output with Wasmtime. Do not point `spin.middleware.toml` at that composed file. `make middleware` prints both commands and does not run them.
 
 ## 3. Trusted ingress
 

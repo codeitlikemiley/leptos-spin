@@ -8,7 +8,7 @@ description = "Standard Leptos WASI app. No composed middleware and no trusted i
 
 # Profile 1 of 3: the component serves the application itself.
 # CORS, browser security headers, and authentication are not configured here.
-# Opt into deploy/middleware or spin.trusted-ingress.toml, never both.
+# Opt into spin.middleware.toml or spin.trusted-ingress.toml, never both.
 [[trigger.http]]
 route = "/..."
 component = "{{project-name | kebab_case}}"

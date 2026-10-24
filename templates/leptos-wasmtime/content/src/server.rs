@@ -8,6 +8,9 @@ use leptos_wasi::wasip3::prelude::{
 };
 use wasip3::http::types::{ErrorCode, Request, Response};
 
+// `init_wasip3_spawner` is what calls the wasip3 task hook. wasip3 0.8+
+// renamed `spawn` to `spawn_local`; that call site lives in leptos_wasi,
+// which is why the guest pins a runtime that has already made the rename.
 thread_local! {
     static ROUTES: Result<RouteTable, RegistrationError> =
         RouteTable::discover(App, None, || {});
@@ -21,6 +24,8 @@ impl wasip3::exports::http::handler::Guest for LeptosServer {
 
         let conf = get_configuration(None).map_err(internal_error)?;
         let leptos_options = conf.leptos_options;
+        // `mut` is only required when the trusted-ingress feature rewrites headers.
+        #[allow(unused_mut)]
         let mut request = wasip3::http_compat::http_from_wasi_request(request)?;
 
         // The trusted-ingress feature is a different binary. The default
@@ -31,25 +36,25 @@ impl wasip3::exports::http::handler::Guest for LeptosServer {
         }
 
         let routes = ROUTES.with(Clone::clone).map_err(internal_error)?;
-        let handler = Handler::build(request).await.map_err(|error| {
-            eprintln!("leptos_wasi error: {error}");
-            error.into_error_code()
-        })?;
-        let handler = handler
+
+        Handler::build(request)
+            .await
+            .map_err(handler_error)?
             .static_files_handler("/pkg", serve_static_files)
             .map_err(internal_error)?
             .with_server_fn::<GetCount>()
             .with_server_fn::<IncrementCount>()
             .generate_routes_from(&routes)
-            .map_err(internal_error)?;
-        handler
+            .map_err(internal_error)?
             .handle_with_context(move || crate::app::shell(leptos_options.clone()), || {})
             .await
-            .map_err(|error| {
-                eprintln!("leptos_wasi error: {error}");
-                error.into_error_code()
-            })
+            .map_err(handler_error)
     }
+}
+
+fn handler_error(error: leptos_wasi::wasip3::HandlerError) -> ErrorCode {
+    eprintln!("leptos_wasi error: {error}");
+    error.into_error_code()
 }
 
 fn serve_static_files(path: String) -> Option<leptos_wasi::response::Body> {
@@ -154,9 +159,7 @@ fn single_header<'a>(
 }
 
 #[cfg(feature = "trusted-ingress")]
-fn boundary_response(
-    status: http::StatusCode,
-) -> Result<Response, ErrorCode> {
+fn boundary_response(status: http::StatusCode) -> Result<Response, ErrorCode> {
     let mut response = http::Response::new(http_body_util::Full::new(bytes::Bytes::new()));
     *response.status_mut() = status;
     response.headers_mut().insert(

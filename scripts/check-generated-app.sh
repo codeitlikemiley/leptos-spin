@@ -33,7 +33,7 @@ log "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 require_version "rustc" "$(rustc --version)" "rustc 1.99.0 (b940084d7 2026-09-28)"
 log "cargo: $(cargo --version)"
 require_version "cargo-leptos" "$(cargo leptos --version)" "cargo-leptos 0.3.7"
-require_version "wasm-bindgen" "$(wasm-bindgen --version)" "wasm-bindgen 0.2.126"
+require_version "wasm-bindgen" "$(wasm-bindgen --version)" "wasm-bindgen 0.2.129"
 spin_version="$(spin --version)"
 log "spin: ${spin_version}"
 case "$spin_version" in
@@ -52,7 +52,7 @@ generate() {
   local name="$1" template="$2"
   local dir="${WORK}/${name}"
   log "spin new ${name} -t ${template}"
-  (cd "$WORK" && spin new "$name" -t "$template" -a -v authors="Template Check")
+  (cd "$WORK" && spin new "$name" -t "$template" -a --no-vcs)
   test -f "${dir}/spin.toml"
   test -f "${dir}/spin.middleware.toml"
   test -f "${dir}/spin.trusted-ingress.toml"
@@ -72,21 +72,31 @@ def forbid(text, token, label):
 def need(text, token, label):
     if token not in text:
         errors.append(f"{label} missing {token}")
+cargo = (root / "Cargo.toml").read_text()
 forbid(standard, "WASI_MIDDLEWARE_", "spin.toml")
 forbid(standard, "AUTH_TRUSTED_INGRESS", "spin.toml")
 forbid(standard, "trusted-ingress", "spin.toml")
 forbid(standard, "-middleware.wasm", "spin.toml")
+forbid(standard, "dependencies.middleware", "spin.toml")
 need(standard, '--features ssr"', "spin.toml")
-need(middleware, "-middleware.wasm", "spin.middleware.toml")
+need(middleware, "dependencies.middleware", "spin.middleware.toml")
 need(middleware, "WASI_MIDDLEWARE_CORS_ORIGINS", "spin.middleware.toml")
+forbid(middleware, "-middleware.wasm", "spin.middleware.toml")
 forbid(middleware, "AUTH_TRUSTED_INGRESS", "spin.middleware.toml")
 forbid(middleware, "trusted-ingress", "spin.middleware.toml")
+need(cargo, "3cf30012b50a1afb750dac3d28aa6da4a32c3468", "Cargo.toml")
+need(cargo, 'version = "=0.9.0"', "Cargo.toml")
+need(cargo, 'version = "=0.2.129"', "Cargo.toml")
+need(cargo, 'version = "=0.8.22"', "Cargo.toml")
+if "dep:spin-sdk" in cargo.split("[features]", 1)[-1]:
+    errors.append("ssr features enable spin-sdk")
 need(ingress, "target/trusted-ingress/", "spin.trusted-ingress.toml")
 need(ingress, "AUTH_TRUSTED_INGRESS_KEY_BASE64", "spin.trusted-ingress.toml")
 need(ingress, "127.0.0.1:3009", "spin.trusted-ingress.toml")
 need(ingress, "ssr,trusted-ingress", "spin.trusted-ingress.toml")
 forbid(ingress, "WASI_MIDDLEWARE_", "spin.trusted-ingress.toml")
 forbid(ingress, "-middleware.wasm", "spin.trusted-ingress.toml")
+forbid(ingress, "dependencies.middleware", "spin.trusted-ingress.toml")
 lower = sources.lower()
 for token in ("access-control-allow-origin", "apply_response_security", "apply_secure_response_headers"):
     if token in lower:
@@ -111,13 +121,14 @@ expect_auth = sys.argv[1] == "yes"
 evidence = sys.argv[2]
 meta = json.load(sys.stdin)
 wanted = {
-    "leptos": "0.8.20",
-    "leptos_meta": "0.8.6",
-    "leptos_router": "0.8.14",
+    "leptos": "0.8.22",
+    "leptos_meta": "0.8.7",
+    "leptos_router": "0.8.17",
     "server_fn": "0.8.13",
     "leptos-wasi-runtime": "0.4.2",
-    "wasip3": "0.7.0+wasi-0.3.0",
-    "wasm-bindgen": "0.2.126",
+    "wasip3": "0.9.0+wasi-0.3.0",
+    "wit-bindgen": "0.62.0",
+    "wasm-bindgen": "0.2.129",
     "wasi-auth": "0.1.0-rc.5",
 }
 by_id = {pkg["id"]: pkg for pkg in meta["packages"]}
@@ -127,10 +138,11 @@ direct = {}
 for dep in root["deps"]:
     pkg = by_id[dep["pkg"]]
     direct[pkg["name"]] = pkg["version"]
-resolved = {}
+from collections import defaultdict
+resolved = defaultdict(set)
 for node in meta["resolve"]["nodes"]:
     pkg = by_id[node["id"]]
-    resolved[pkg["name"]] = pkg["version"]
+    resolved[pkg["name"]].add(pkg["version"])
 lines = ["direct dependencies:"]
 for name in sorted(direct):
     lines.append(f"  {name} {direct[name]}")
@@ -141,21 +153,31 @@ interesting = [
     "server_fn",
     "leptos-wasi-runtime",
     "wasip3",
+    "wit-bindgen",
     "wasm-bindgen",
     "wasi-auth",
+    "spin-sdk",
 ]
 lines.append("resolved pins:")
 errors = []
 for name in interesting:
-    actual = resolved.get(name)
+    actual = sorted(resolved.get(name, ()))
     lines.append(f"  {name}={actual}")
-    if name == "wasi-auth":
+    if name in ("wasi-auth", "spin-sdk"):
         continue
-    if actual != wanted[name]:
-        errors.append(f"{name}: resolved {actual}, expected {wanted[name]}")
+    if actual != [wanted[name]]:
+        errors.append(f"{name}: resolved {actual}, expected [{wanted[name]}]")
+wit = resolved.get("wit-bindgen", set())
+if wit - {"0.62.0", "0.51.0"}:
+    errors.append(f"unexpected wit-bindgen versions: {sorted(wit)}")
+wasip3_versions = resolved.get("wasip3", set())
+if any(v.startswith("0.4.") or v.startswith("0.6.") for v in wasip3_versions):
+    errors.append(f"old wasip3 still resolved: {sorted(wasip3_versions)}")
+if "spin-sdk" in resolved:
+    errors.append(f"spin-sdk is linked into this feature set: {sorted(resolved['spin-sdk'])}")
 if expect_auth:
-    if resolved.get("wasi-auth") != wanted["wasi-auth"]:
-        errors.append(f"wasi-auth: resolved {resolved.get('wasi-auth')}, expected {wanted['wasi-auth']}")
+    if resolved.get("wasi-auth") != {wanted["wasi-auth"]}:
+        errors.append(f"wasi-auth: resolved {sorted(resolved.get('wasi-auth', ()))}, expected {wanted['wasi-auth']}")
 elif "wasi-auth" in resolved:
     errors.append("wasi-auth is present on the standard ssr resolve")
 text = "\n".join(lines)
@@ -171,7 +193,7 @@ PY
 # Resolve once per app. `cargo fetch` writes the lock that metadata checks.
 for app in check-spin-app check-wasmtime-app; do
   log "fetch ${app}"
-  (cd "${WORK}/${app}" && cargo fetch --features hydrate,ssr,trusted-ingress)
+  (cd "${WORK}/${app}" && cargo fetch --features hydrate,ssr,trusted-ingress) >>"$EVIDENCE" 2>&1
   assert_resolved "${WORK}/${app}" ssr no
   assert_resolved "${WORK}/${app}" "ssr,trusted-ingress" yes
   log "cargo check trusted-ingress feature ${app}"
@@ -277,5 +299,5 @@ serve_one check-spin-app
 serve_one check-wasmtime-app
 
 log "PASS generated both templates, resolved the pinned crates, and served / , /api/get_count, /api/increment_count, and /pkg"
-log "UNVERIFIED in this script: wac composition against wasi-http-middleware components, Wasmtime 46.0.1 serve, and a live wasi-auth ingress with PostgreSQL"
+log "UNVERIFIED in this script: Spin dependencies.middleware with wasi-http-middleware components (those binaries are not published and 61b4199 is still wasip3 0.7.0), wac composition, Wasmtime 46.0.1 serve, and a live wasi-auth ingress with PostgreSQL"
 log "evidence: ${EVIDENCE}"

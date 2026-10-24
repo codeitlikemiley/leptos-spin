@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Opt-in composition of reusable WASI HTTP middleware around the standard
-# Leptos component. This does not run during `spin up` or `spin build`.
+# Wasmtime precompose path. Spin 4.2.5 should use spin.middleware.toml
+# (`dependencies.middleware`) instead of this script. Do not serve the
+# output of this script with that manifest: the host would compose the
+# same policy twice. This does not run during `spin up` or `spin build`.
 #
 # The guest passed as <application.wasm> must be the standard `ssr` build.
 # Refuses a trusted-ingress artifact: that profile already has an HMAC
