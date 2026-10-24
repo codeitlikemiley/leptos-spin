@@ -7,23 +7,20 @@ authors = ["{{authors}}"]
 description = "Opt-in Spin 4.2.5 native HTTP middleware around the standard component."
 
 # Profile 2 of 3. `spin up` does not use this file.
-# The guest is the standard `--features ssr` build. Spin composes the
-# pipeline at load time from `dependencies.middleware`. Do not also plug
-# those components with wac, and do not point this manifest at the HMAC
-# ingress build: that profile already owns auth, CORS, and security headers.
+# One fused secure-defaults component applies request-id, nosniff,
+# strict-origin-when-cross-origin, CORS, and authn. Do not add the split
+# components as well: that would apply those headers twice. Do not point
+# this manifest at the HMAC ingress build, and do not serve a wac plug of
+# this same component through this file.
 #
-# Order is outer to inner. A request walks the array front to back before
-# the application component. `/pkg/...` is a separate trigger with no
-# middleware, so client assets stay public.
+# `/pkg/...` is a separate trigger with no middleware, so client assets
+# stay public. The Leptos guest does not write these response headers.
 [[trigger.http]]
 route = "/..."
 component = "{{project-name | kebab_case}}"
 executor = { type = "http" }
 dependencies.middleware = [
-  { component = "{{project-name | kebab_case}}-request-id" },
-  { component = "{{project-name | kebab_case}}-security-headers" },
-  { component = "{{project-name | kebab_case}}-cors" },
-  { component = "{{project-name | kebab_case}}-authn-policy" },
+  { component = "{{project-name | kebab_case}}-secure-defaults" },
 ]
 
 [component.{{project-name | kebab_case}}]
@@ -35,31 +32,26 @@ LEPTOS_OUTPUT_NAME = "{{project-name | snake_case}}"
 LEPTOS_SITE_ROOT = "/site"
 LEPTOS_SITE_PKG_DIR = "pkg"
 
-# These Wasm files are not vendored. Build them from
-# codeitlikemiley/wasi-http-middleware after that repo pins wasip3 =0.9.0.
-# Commit 61b41995812220c69c4a10530efb0cd5f7522840 is still wasip3 0.7.0.
-# Intended final target: a signed wasi-http-middleware 0.2.0 release.
-# Each component must import and export wasi:http/handler@0.3.0.
-[component.{{project-name | kebab_case}}-request-id]
-source = "target/middleware/request-id.wasm"
-allowed_outbound_hosts = []
-
-[component.{{project-name | kebab_case}}-security-headers]
-source = "target/middleware/security-headers.wasm"
-allowed_outbound_hosts = []
-
-[component.{{project-name | kebab_case}}-cors]
-source = "target/middleware/cors.wasm"
-allowed_outbound_hosts = []
-[component.{{project-name | kebab_case}}-cors.environment]
+# Build this Wasm from codeitlikemiley/wasi-http-middleware @
+# 896f8f5426b1bdc6d208367d0ac8dbf44146dfda. It is not vendored.
+# Final target: unpublished tag v0.2.0-alpha.4. The component must import
+# and export wasi:http/handler@0.3.0.
+[component.{{project-name | kebab_case}}-secure-defaults]
+source = "target/middleware/secure-defaults.wasm"
+allowed_outbound_hosts = ["http://127.0.0.1:19101"]
+[component.{{project-name | kebab_case}}-secure-defaults.environment]
 WASI_MIDDLEWARE_CORS_ORIGINS = "http://127.0.0.1:3000"
 WASI_MIDDLEWARE_CORS_METHODS = "GET,HEAD,POST"
 WASI_MIDDLEWARE_CORS_HEADERS = "content-type,x-request-id"
 WASI_MIDDLEWARE_CORS_ALLOW_CREDENTIALS = "false"
-
-[component.{{project-name | kebab_case}}-authn-policy]
-source = "target/middleware/authn-policy.wasm"
-allowed_outbound_hosts = []
+# Optional mode skips the broker when Authorization is absent, so the public
+# counter still renders. A presented credential is verified. Broker URL,
+# service id, and audiences are required even in this mode.
+WASI_MIDDLEWARE_AUTHN_BROKER_URL = "http://127.0.0.1:19101/authenticate"
+WASI_MIDDLEWARE_AUTHN_MODE = "optional"
+WASI_MIDDLEWARE_SERVICE_ID = "{{project-name | kebab_case}}"
+WASI_MIDDLEWARE_AUTHN_AUDIENCES = "api://{{project-name | kebab_case}}"
+WASI_MIDDLEWARE_AUTHN_ALLOW_INSECURE_LOOPBACK = "true"
 
 [[trigger.http]]
 route = "/pkg/..."

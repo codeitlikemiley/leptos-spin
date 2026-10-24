@@ -5,7 +5,7 @@ Pick one profile. They are separate manifests and separate Wasm artifacts.
 | Profile | Manifest | Guest features | Who applies CORS, security headers, and auth |
 |---|---|---|---|
 | Standard | `spin.toml` | `ssr` | Nobody in the template. `leptos-wasi-runtime` still sets a single `x-content-type-options: nosniff` on its own responses. |
-| HTTP middleware | `spin.middleware.toml` | `ssr` only. Spin 4.2.5 loads `dependencies.middleware`. | Those middleware components only. Do not enable the HMAC ingress feature, and do not also run `wac`. |
+| HTTP middleware | `spin.middleware.toml` | `ssr` only. One `secure-defaults` component. | That component sets nosniff, referrer policy, and CORS. The guest does not. |
 | Trusted ingress | `spin.trusted-ingress.toml` | `ssr,trusted-ingress` | The native `wasi-auth` ingress. This guest only verifies the HMAC envelope. |
 
 `spin up` and `spin build` read `spin.toml` only.
@@ -29,11 +29,13 @@ spin build
 spin up -f spin.middleware.toml
 ```
 
-`dependencies.middleware` runs request-id, then security-headers, then cors, then authn-policy. `/pkg/...` has no middleware entry. CORS variables live on the cors component. Security-headers replaces `nosniff` on the way out. The guest does not read those variables and does not emit CORS.
+`dependencies.middleware` lists one component, `secure-defaults`, from `codeitlikemiley/wasi-http-middleware` commit `896f8f5426b1bdc6d208367d0ac8dbf44146dfda` (https://github.com/codeitlikemiley/wasi-http-middleware/pull/1). That composition sets `x-content-type-options: nosniff`, `referrer-policy: strict-origin-when-cross-origin`, and CORS. The Leptos guest source does not write those headers. `/pkg/...` has no middleware entry. Do not also attach the split request-id, security-headers, cors, or authn-policy components.
 
-The middleware binaries are not in this template. Build components that import and export `wasi:http/handler@0.3.0` from `codeitlikemiley/wasi-http-middleware` after that repo pins `wasip3` `=0.9.0`. Commit `61b41995812220c69c4a10530efb0cd5f7522840` is still `wasip3` 0.7.0. The intended final target is a signed `wasi-http-middleware` 0.2.0 release. There is no crates.io crate and no GitHub release asset today, so this profile is not what `spin up` runs.
+`leptos-wasi-runtime` still inserts one `nosniff` when the header is absent. `secure-defaults` replaces that field, so a middleware response carries one value. The standard profile has no middleware, so that single runtime header is the only one.
 
-`deploy/compose-middleware.sh` is the Wasmtime precompose path (`wac` 0.10.1). It refuses any input path containing `trusted-ingress`. Serve its output with Wasmtime. Do not point `spin.middleware.toml` at that composed file. `make middleware` prints both commands and does not run them.
+The Wasm file is not in this template. The final target is unpublished tag `v0.2.0-alpha.4`. There is no release asset today, so this profile is not what `spin up` runs. Authn mode is `optional`: anonymous requests skip the broker, and a presented credential is verified.
+
+`deploy/compose-middleware.sh` plugs that one component with `wac` 0.10.1 for Wasmtime. It refuses an HMAC ingress artifact and refuses the split chain. Serve its output with Wasmtime. Do not point `spin.middleware.toml` at that composed file. `make middleware` prints both commands and does not run them.
 
 ## 3. Trusted ingress
 

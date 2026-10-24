@@ -49,6 +49,14 @@ status = "UNRESOLVED against wasip3 0.9.0 until Agent 5 replaces this rev"
 
 [profiles]
 standard = "spin.toml; features ssr; no dependencies.middleware; no HMAC"
-middleware = "spin.middleware.toml; Spin 4.2.5 dependencies.middleware; not started by spin up"
+middleware = "spin.middleware.toml; one secure-defaults component; not started by spin up"
 trusted_ingress = "spin.trusted-ingress.toml; separate target dir; HMAC guest"
-wasmtime_precompose = "deploy/compose-middleware.sh; not used with spin.middleware.toml"
+wasmtime_precompose = "deploy/compose-middleware.sh plugs one secure-defaults.wasm; not used with spin.middleware.toml"
+
+[wasi-http-middleware]
+repository = "https://github.com/codeitlikemiley/wasi-http-middleware"
+# Temporary pin. Branch gol/stabilize-middleware-contracts-894a, pull request 1.
+rev = "896f8f5426b1bdc6d208367d0ac8dbf44146dfda"
+# Next tag. Not published. No release asset.
+final_target = "v0.2.0-alpha.4"
+component = "secure-defaults"

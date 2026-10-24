@@ -14,7 +14,7 @@ The target guest set is Leptos 0.8.22, `server_fn` 0.8.13, `wasip3` 0.9.0 (`wit-
 Both generated apps have three deployment profiles. Only the standard profile is what `spin up` runs:
 
 1. **Standard.** `spin.toml`. No middleware pipeline and no HMAC verifier.
-2. **HTTP middleware.** `spin.middleware.toml`. Opt-in. Spin 4.2.5 composes `dependencies.middleware` at load time. `deploy/compose-middleware.sh` is the Wasmtime precompose alternative and must not be combined with that manifest.
+2. **HTTP middleware.** `spin.middleware.toml`. Opt-in. One `secure-defaults` component from `wasi-http-middleware` `896f8f5` sets nosniff, referrer policy, and CORS. The guest does not. Final target is unpublished tag `v0.2.0-alpha.4`. `deploy/compose-middleware.sh` is the Wasmtime plug of that same component and must not be combined with the Spin manifest.
 3. **Trusted ingress.** `spin.trusted-ingress.toml`. A separate guest built with `ssr,trusted-ingress` that verifies `wasi-auth` 0.1.0-rc.5 HMAC envelopes and does not compose middleware.
 
 `/pkg/...` is always a separate fileserver trigger so client assets are not wrapped by auth.

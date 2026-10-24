@@ -80,8 +80,14 @@ forbid(standard, "-middleware.wasm", "spin.toml")
 forbid(standard, "dependencies.middleware", "spin.toml")
 need(standard, '--features ssr"', "spin.toml")
 need(middleware, "dependencies.middleware", "spin.middleware.toml")
+need(middleware, "secure-defaults.wasm", "spin.middleware.toml")
 need(middleware, "WASI_MIDDLEWARE_CORS_ORIGINS", "spin.middleware.toml")
+need(middleware, "896f8f5426b1bdc6d208367d0ac8dbf44146dfda", "spin.middleware.toml")
 forbid(middleware, "-middleware.wasm", "spin.middleware.toml")
+forbid(middleware, "security-headers.wasm", "spin.middleware.toml")
+forbid(middleware, "request-id.wasm", "spin.middleware.toml")
+forbid(middleware, "authn-policy.wasm", "spin.middleware.toml")
+forbid(middleware, "cors.wasm", "spin.middleware.toml")
 forbid(middleware, "AUTH_TRUSTED_INGRESS", "spin.middleware.toml")
 forbid(middleware, "trusted-ingress", "spin.middleware.toml")
 need(cargo, "3cf30012b50a1afb750dac3d28aa6da4a32c3468", "Cargo.toml")
@@ -98,7 +104,14 @@ forbid(ingress, "WASI_MIDDLEWARE_", "spin.trusted-ingress.toml")
 forbid(ingress, "-middleware.wasm", "spin.trusted-ingress.toml")
 forbid(ingress, "dependencies.middleware", "spin.trusted-ingress.toml")
 lower = sources.lower()
-for token in ("access-control-allow-origin", "apply_response_security", "apply_secure_response_headers"):
+for token in (
+    "access-control-allow-origin",
+    "apply_response_security",
+    "apply_secure_response_headers",
+    "nosniff",
+    "referrer-policy",
+    "strict-origin-when-cross-origin",
+):
     if token in lower:
         errors.append(f"guest source contains {token}")
 if errors:
@@ -299,5 +312,5 @@ serve_one check-spin-app
 serve_one check-wasmtime-app
 
 log "PASS generated both templates, resolved the pinned crates, and served / , /api/get_count, /api/increment_count, and /pkg"
-log "UNVERIFIED in this script: Spin dependencies.middleware with wasi-http-middleware components (those binaries are not published and 61b4199 is still wasip3 0.7.0), wac composition, Wasmtime 46.0.1 serve, and a live wasi-auth ingress with PostgreSQL"
+log "UNVERIFIED in this script: Spin dependencies.middleware against secure-defaults.wasm from wasi-http-middleware 896f8f5 (tag v0.2.0-alpha.4 is unpublished and the Wasm is not vendored), wac composition, Wasmtime serve, and a live wasi-auth ingress with PostgreSQL"
 log "evidence: ${EVIDENCE}"
