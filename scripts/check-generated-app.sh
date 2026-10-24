@@ -126,13 +126,15 @@ generate check-wasmtime-app leptos-wasmtime
 
 assert_resolved() {
   local dir="$1" features="$2" expect_wasi_auth="$3"
+  local meta_json="${dir}.features-${features//,/-}.json"
   log "cargo metadata ${dir} --features ${features}"
-  (cd "$dir" && cargo metadata --format-version 1 --locked --features "$features" --filter-platform wasm32-wasip2) \
-    | python3 - "$expect_wasi_auth" "$EVIDENCE" <<'PY'
+  # A heredoc is this process's stdin, so the metadata JSON has to be a file.
+  (cd "$dir" && cargo metadata --format-version 1 --locked --features "$features" --filter-platform wasm32-wasip2 >"$meta_json")
+  python3 - "$expect_wasi_auth" "$EVIDENCE" "$meta_json" <<'PY'
 import json, sys
 expect_auth = sys.argv[1] == "yes"
 evidence = sys.argv[2]
-meta = json.load(sys.stdin)
+meta = json.load(open(sys.argv[3]))
 wanted = {
     "leptos": "0.8.22",
     "leptos_meta": "0.8.7",
