@@ -10,7 +10,7 @@
 # nosniff, strict-origin-when-cross-origin, and CORS.
 #
 # Build secure-defaults.wasm from codeitlikemiley/wasi-http-middleware
-# commit 896f8f5426b1bdc6d208367d0ac8dbf44146dfda. Final target is the
+# commit 3df96c21a7906b885e67229e9a7c8c01b6497109. Final target is the
 # unpublished tag v0.2.0-alpha.4. Requires wac 0.10.1.
 set -euo pipefail
 

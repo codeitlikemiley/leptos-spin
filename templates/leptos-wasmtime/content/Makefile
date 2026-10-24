@@ -28,7 +28,7 @@ wasmtime:
 
 middleware:
 	@echo "Opt-in only. One secure-defaults component. Do not combine this with the HMAC ingress profile."
-	@echo "Spin 4.2.5: build target/middleware/secure-defaults.wasm from wasi-http-middleware 896f8f5, then: spin up -f spin.middleware.toml"
+	@echo "Spin 4.2.5: build target/middleware/secure-defaults.wasm from wasi-http-middleware 3df96c21a7906b885e67229e9a7c8c01b6497109, then: spin up -f spin.middleware.toml"
 	@echo "Wasmtime only (do not also use spin.middleware.toml): ./deploy/compose-middleware.sh target/wasm32-wasip2/release/{{project-name | snake_case}}.wasm target/wasm32-wasip2/release/{{project-name | snake_case}}-secure-defaults.wasm target/middleware/secure-defaults.wasm"
 
 trusted-ingress:

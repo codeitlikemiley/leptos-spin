@@ -36,27 +36,31 @@ wasi-auth = "=0.1.0-rc.5"
 spin-sdk = { git = "https://github.com/codeitlikemiley/spin-rust-sdk", rev = "3cf30012b50a1afb750dac3d28aa6da4a32c3468", version = "7.0.0" }
 
 [leptos-wasi-runtime]
-# Final target: crates.io leptos-wasi-runtime once that publish depends on
-# wasip3 =0.9.0 and calls wasip3::spawn_local.
-final_target = "crates.io leptos-wasi-runtime"
+# Final target: a crates.io leptos-wasi-runtime release on wasip3 =0.9.0.
+# Published 0.4.2 calls wasip3::spawn and depends on wasip3 =0.7.0.
+final_target = "crates.io leptos-wasi-runtime on wasip3 0.9.0"
 published_0_4_2 = "requires wasip3 =0.7.0 and calls wasip3::spawn"
-# Temporary pin. This commit is the 0.4.2 line and is NOT the wasip3 0.9
-# rev. Agent 5 had not pushed a replacement when this file was written.
-# Cargo cannot unify rev 6727a211 with wasip3 =0.9.0.
+# Temporary pin. https://github.com/codeitlikemiley/leptos_wasi/pull/41
+# version 0.4.2, default-features = false, features = ["wasip3"].
 git = "https://github.com/codeitlikemiley/leptos_wasi"
-rev = "6727a211b313e78f6760c3d9378728fdf7a3e91b"
-status = "UNRESOLVED against wasip3 0.9.0 until Agent 5 replaces this rev"
+rev = "87e1476938c2b23d598a3fcc74a7acb094aac855"
+version = "0.4.2"
+status = "declared; scripts/check-generated-app.sh records the resolve and Spin run"
 
 [profiles]
 standard = "spin.toml; features ssr; no dependencies.middleware; no HMAC"
-middleware = "spin.middleware.toml; one secure-defaults component; not started by spin up"
+middleware = "spin.middleware.toml; one secure-defaults component; headers only when absent"
 trusted_ingress = "spin.trusted-ingress.toml; separate target dir; HMAC guest"
 wasmtime_precompose = "deploy/compose-middleware.sh plugs one secure-defaults.wasm; not used with spin.middleware.toml"
 
 [wasi-http-middleware]
 repository = "https://github.com/codeitlikemiley/wasi-http-middleware"
 # Temporary pin. Branch gol/stabilize-middleware-contracts-894a, pull request 1.
-rev = "896f8f5426b1bdc6d208367d0ac8dbf44146dfda"
-# Next tag. Not published. No release asset.
+# Security and CORS response fields are written only when absent.
+rev = "3df96c21a7906b885e67229e9a7c8c01b6497109"
+# Next tag. Not published. No release asset. Workspace version at this rev
+# is still 0.2.0-alpha.3.
 final_target = "v0.2.0-alpha.4"
 component = "secure-defaults"
+wit_bindgen = "=0.62.0 features async-spawn; inter-task-wakeup is not enabled"
+status = "declared; the generation check builds secure-defaults.wasm from this rev"

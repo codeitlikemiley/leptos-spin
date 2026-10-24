@@ -5,7 +5,7 @@ Pick one profile. They are separate manifests and separate Wasm artifacts.
 | Profile | Manifest | Guest features | Who applies CORS, security headers, and auth |
 |---|---|---|---|
 | Standard | `spin.toml` | `ssr` | Nobody in the template. `leptos-wasi-runtime` still sets a single `x-content-type-options: nosniff` on its own responses. |
-| HTTP middleware | `spin.middleware.toml` | `ssr` only. One `secure-defaults` component. | That component sets nosniff, referrer policy, and CORS. The guest does not. |
+| HTTP middleware | `spin.middleware.toml` | `ssr` only. One `secure-defaults` component. | That component adds nosniff, referrer policy, and CORS only when absent. The guest does not. |
 | Trusted ingress | `spin.trusted-ingress.toml` | `ssr,trusted-ingress` | The native `wasi-auth` ingress. This guest only verifies the HMAC envelope. |
 
 `spin up` and `spin build` read `spin.toml` only.
@@ -29,9 +29,9 @@ spin build
 spin up -f spin.middleware.toml
 ```
 
-`dependencies.middleware` lists one component, `secure-defaults`, from `codeitlikemiley/wasi-http-middleware` commit `896f8f5426b1bdc6d208367d0ac8dbf44146dfda` (https://github.com/codeitlikemiley/wasi-http-middleware/pull/1). That composition sets `x-content-type-options: nosniff`, `referrer-policy: strict-origin-when-cross-origin`, and CORS. The Leptos guest source does not write those headers. `/pkg/...` has no middleware entry. Do not also attach the split request-id, security-headers, cors, or authn-policy components.
+`dependencies.middleware` lists one component, `secure-defaults`, from `codeitlikemiley/wasi-http-middleware` commit `3df96c21a7906b885e67229e9a7c8c01b6497109` (https://github.com/codeitlikemiley/wasi-http-middleware/pull/1). That commit writes `x-content-type-options`, `referrer-policy`, and `Access-Control-*` only when the field is absent. The Leptos guest source does not write those headers. `/pkg/...` has no middleware entry. Do not also attach the split request-id, security-headers, cors, or authn-policy components.
 
-`leptos-wasi-runtime` still inserts one `nosniff` when the header is absent. `secure-defaults` replaces that field, so a middleware response carries one value. The standard profile has no middleware, so that single runtime header is the only one.
+`leptos-wasi-runtime` inserts one `nosniff` when that field is absent. `secure-defaults` leaves that value in place and adds `referrer-policy` and CORS only when the response does not already have them, so each of those headers appears once. The standard profile has no middleware, so that single runtime header is the only one.
 
 The Wasm file is not in this template. The final target is unpublished tag `v0.2.0-alpha.4`. There is no release asset today, so this profile is not what `spin up` runs. Authn mode is `optional`: anonymous requests skip the broker, and a presented credential is verified.
 

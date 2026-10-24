@@ -7,11 +7,11 @@ authors = ["{{authors}}"]
 description = "Opt-in Spin 4.2.5 native HTTP middleware around the standard component."
 
 # Profile 2 of 3. `spin up` does not use this file.
-# One fused secure-defaults component applies request-id, nosniff,
-# strict-origin-when-cross-origin, CORS, and authn. Do not add the split
-# components as well: that would apply those headers twice. Do not point
-# this manifest at the HMAC ingress build, and do not serve a wac plug of
-# this same component through this file.
+# One fused secure-defaults component applies request-id and authn. It writes
+# nosniff, strict-origin-when-cross-origin, and CORS only when that field is
+# absent, so a downstream value is kept. Do not add the split components as
+# well. Do not point this manifest at the HMAC ingress build, and do not
+# serve a wac plug of this same component through this file.
 #
 # `/pkg/...` is a separate trigger with no middleware, so client assets
 # stay public. The Leptos guest does not write these response headers.
@@ -33,7 +33,8 @@ LEPTOS_SITE_ROOT = "/site"
 LEPTOS_SITE_PKG_DIR = "pkg"
 
 # Build this Wasm from codeitlikemiley/wasi-http-middleware @
-# 896f8f5426b1bdc6d208367d0ac8dbf44146dfda. It is not vendored.
+# 3df96c21a7906b885e67229e9a7c8c01b6497109. It is not vendored.
+# That commit sets security and CORS headers only when they are absent.
 # Final target: unpublished tag v0.2.0-alpha.4. The component must import
 # and export wasi:http/handler@0.3.0.
 [component.{{project-name | kebab_case}}-secure-defaults]

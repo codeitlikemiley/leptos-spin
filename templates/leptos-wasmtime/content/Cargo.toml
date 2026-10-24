@@ -17,14 +17,11 @@ console_error_panic_hook = { version = "0.1", optional = true }
 leptos = { version = "=0.8.22", default-features = false }
 leptos_meta = { version = "=0.8.7", default-features = false }
 leptos_router = { version = "=0.8.17", default-features = false }
-# Final target: crates.io `leptos-wasi-runtime` once that publish depends on
-# wasip3 =0.9.0 and calls `wasip3::spawn_local`. Published 0.4.2 (2026-08-05)
-# requires wasip3 =0.7.0. Git HEAD 6727a211 (2026-09-17) is the same 0.4.2
-# line and still calls `wasip3::spawn`. No wasip3 0.9 rev was on
-# codeitlikemiley/leptos_wasi when this template was written, so the pin is
-# that HEAD until Agent 5's rev replaces it. Cargo cannot unify it with
-# wasip3 =0.9.0.
-leptos_wasi = { package = "leptos-wasi-runtime", git = "https://github.com/codeitlikemiley/leptos_wasi", rev = "6727a211b313e78f6760c3d9378728fdf7a3e91b", default-features = false, features = ["wasip3"], optional = true }
+# Temporary pin of the 0.4.2 line on wasip3 0.9 (`spawn_local`).
+# https://github.com/codeitlikemiley/leptos_wasi/pull/41
+# Final target: a crates.io `leptos-wasi-runtime` release that depends on
+# wasip3 =0.9.0. Do not enable wit-bindgen `inter-task-wakeup` on 0.57.x.
+leptos_wasi = { package = "leptos-wasi-runtime", git = "https://github.com/codeitlikemiley/leptos_wasi", rev = "87e1476938c2b23d598a3fcc74a7acb094aac855", version = "0.4.2", default-features = false, features = ["wasip3"], optional = true }
 server_fn = { version = "=0.8.13", default-features = false, features = ["axum-no-default"] }
 # crates.io spin-sdk 7.0.0 is wasip3 0.7.1 (`spawn`). This rev is
 # https://github.com/codeitlikemiley/spin-rust-sdk/pull/1 and exports
