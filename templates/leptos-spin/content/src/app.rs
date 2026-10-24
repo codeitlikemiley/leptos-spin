@@ -137,6 +137,8 @@ pub async fn increment_count() -> Result<u32, ServerFnError<String>> {
     Ok(0)
 }
 
+// Input encoding is the server-fn default, `PostUrl`. The generation check
+// posts `value=` plus 61434 letters, a 61440-byte body, and expects `61434`.
 #[server(prefix = "/api", endpoint = "echo_len")]
 pub async fn echo_len(value: String) -> Result<u32, ServerFnError<String>> {
     #[cfg(feature = "ssr")]

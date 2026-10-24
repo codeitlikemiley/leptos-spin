@@ -517,22 +517,24 @@ post_echo_len() {
   local acao="$6"
   shift 6
   local payload="${WORK}/${name}.${label// /-}.echo.json"
+  # Default server-fn input encoding is PostUrl, not a JSON array.
+  # `value=` plus 61434 letters is a 61440-byte body.
   python3 - "$payload" <<'PY'
 import sys
-open(sys.argv[1], "w", encoding="ascii").write('["' + ("a" * 61440) + '"]')
+open(sys.argv[1], "w", encoding="ascii").write("value=" + ("a" * 61434))
 PY
   local size
   size="$(wc -c <"$payload")"
-  log "${label} 60 KiB POST request bytes=${size} payload characters=61440"
-  if [[ "$size" -ne 61444 ]]; then
-    log "FAIL ${label} 60 KiB POST request size ${size}, expected 61444"
+  log "${label} 60 KiB POST request bytes=${size} payload characters=61434"
+  if [[ "$size" -ne 61440 ]]; then
+    log "FAIL ${label} 60 KiB POST request size ${size}, expected 61440"
     exit 1
   fi
   local headers="${WORK}/${name}.${label// /-}.echo.headers"
   local body="${WORK}/${name}.${label// /-}.echo.body"
   fetch_headers "$headers" "$body" "${base}/api/echo_len" \
     -X POST \
-    -H 'content-type: application/json' \
+    -H 'content-type: application/x-www-form-urlencoded' \
     -H 'accept: application/json' \
     --data-binary @"$payload" \
     "$@"
@@ -540,7 +542,7 @@ PY
   code="$(http_code "$headers")"
   response="$(tr -d '\n' <"$body")"
   log "${label} POST /api/echo_len -> ${code} body=${response} response_bytes=$(wc -c <"$body")"
-  if [[ "$code" != "200" || "$response" != "61440" ]]; then
+  if [[ "$code" != "200" || "$response" != "61434" ]]; then
     log "FAIL ${label} 60 KiB POST"
     cat "$headers" | tee -a "$EVIDENCE"
     exit 1
