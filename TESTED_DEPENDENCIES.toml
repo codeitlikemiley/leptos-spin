@@ -1,0 +1,80 @@
+# Dependency set declared for generated apps.
+#
+# Resolved and runtime-tested rows are filled by scripts/check-generated-app.sh.
+# A row marked UNRESOLVED was not selected by Cargo in that run.
+#
+# Rust toolchain this repository pins and runs is 1.99.0
+# (rustc 1.99.0 (b940084d7 2026-09-28), cargo 1.99.0 (5f94df478 2026-08-27)).
+# Declared package.rust-version is 1.94, from the wasip3 0.9 matrix.
+# Rust 1.93 was not recompiled against wasip3 0.9.0. Rust 1.94 was not
+# re-run in this repository.
+
+[toolchain]
+rust = "1.99.0"
+rust_msrv = "1.94"
+cargo_leptos = "0.3.7"
+wasm_bindgen_cli = "0.2.129"
+spin = "4.2.5"
+# Wasmtime 46.0.1 is not the Spin 4.2.5 host. This repository does not
+# install it. `make wasmtime` remains a documented command.
+wasmtime_reference = "46.0.1"
+
+[crates]
+leptos = "=0.8.22"
+leptos_meta = "=0.8.7"
+leptos_router = "=0.8.17"
+# Transitive from leptos 0.8.22. Not a direct template dependency.
+leptos_macro = "=0.8.19"
+server_fn = "=0.8.13"
+wasip3 = "=0.9.0"
+wasip3_resolved = "0.9.0+wasi-0.3.0"
+wit_bindgen = "=0.62.0"
+# wasip2 1.0.4, reached through leptos -> rand -> getrandom on
+# wasm32-wasip2, also resolves wit-bindgen 0.57.1 with features = [].
+# That is the p2 edge, not a second wasip3. Do not enable inter-task-wakeup.
+wit_bindgen_wasip2 = "0.57.1"
+wasm-bindgen = "=0.2.129"
+# Temporary pin. Package version at this rev is still 0.1.0-rc.5.
+# https://github.com/codeitlikemiley/wasi-auth/pull/17
+# Final target: unpublished wasi-auth 0.1.0-rc.6.
+# Feature `http` only. postgres and spin-sdk are not enabled.
+# Fresh spin new on 2026-10-24T14:24:59Z resolved this rev as 0.1.0-rc.5
+# for features ssr,trusted-ingress and omitted it from ssr. The guest
+# served on Spin 4.2.5: empty key plus Authorization was 503; with the
+# key injected by --env, Authorization, a session cookie, and a bogus
+# envelope were each 401.
+wasi-auth = { git = "https://github.com/codeitlikemiley/wasi-auth", rev = "bdfad80372287a3be4215aeefad534098ef6537b", version = "=0.1.0-rc.5" }
+# Temporary git pin. crates.io spin-sdk 7.0.0 is wasip3 0.7.1.
+# Final target: an upstream spin-sdk release on wasip3 0.9.0.
+spin-sdk = { git = "https://github.com/codeitlikemiley/spin-rust-sdk", rev = "3cf30012b50a1afb750dac3d28aa6da4a32c3468", version = "7.0.0" }
+
+[leptos-wasi-runtime]
+# Final target: a crates.io leptos-wasi-runtime release on wasip3 =0.9.0.
+# Published 0.4.2 calls wasip3::spawn and depends on wasip3 =0.7.0.
+final_target = "crates.io leptos-wasi-runtime on wasip3 0.9.0"
+published_0_4_2 = "requires wasip3 =0.7.0 and calls wasip3::spawn"
+# Temporary pin. https://github.com/codeitlikemiley/leptos_wasi/pull/41
+# version 0.4.2, default-features = false, features = ["wasip3"].
+git = "https://github.com/codeitlikemiley/leptos_wasi"
+rev = "d4f512eb18b64c8f78c385365be28acc023462eb"
+version = "0.4.2"
+# Replaces 87e1476938c2b23d598a3fcc74a7acb094aac855.
+status = "resolved 0.4.2 from d4f512eb18b64c8f78c385365be28acc023462eb; fresh spin new 2026-10-24T14:52:41Z, cargo tree -i wasip3 only 0.9.0, SSR, server fn, 60 KiB POST, and /pkg on Spin 4.2.5"
+
+[profiles]
+standard = "spin.toml; features ssr; no dependencies.middleware; no HMAC"
+middleware = "spin.middleware.toml; one secure-defaults component; headers only when absent"
+trusted_ingress = "spin.trusted-ingress.toml; separate target dir; HMAC guest; --listen 127.0.0.1:3009; key via --env AUTH_TRUSTED_INGRESS_KEY_BASE64"
+wasmtime_precompose = "deploy/compose-middleware.sh plugs one secure-defaults.wasm; not used with spin.middleware.toml"
+
+[wasi-http-middleware]
+repository = "https://github.com/codeitlikemiley/wasi-http-middleware"
+# Temporary pin. Branch gol/stabilize-middleware-contracts-894a, pull request 1.
+# Security and CORS response fields are written only when absent.
+rev = "3df96c21a7906b885e67229e9a7c8c01b6497109"
+# Next tag. Not published. No release asset. Workspace version at this rev
+# is still 0.2.0-alpha.3.
+final_target = "v0.2.0-alpha.4"
+component = "secure-defaults"
+wit_bindgen = "=0.62.0 features async-spawn; inter-task-wakeup is not enabled"
+status = "secure-defaults.wasm 401706 bytes built from this rev and served on Spin 4.2.5; security and CORS headers appeared once"

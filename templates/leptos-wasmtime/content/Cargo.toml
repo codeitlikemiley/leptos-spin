@@ -2,35 +2,56 @@
 name = "{{project-name | kebab_case}}"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.93.0"
+# Declared MSRV matches the wasip3 0.9 stabilization matrix. The toolchain
+# file pins Rust 1.99.0, which is the compiler this repository tests.
+# Rust 1.93 was not recompiled against wasip3 0.9.0.
+rust-version = "1.94"
 authors = ["{{authors}}"]
-description = "A Leptos application running as a WASIp3 Component"
-build = "build.rs"
+description = "A Leptos application running as a WASIp3 component"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-any_spawner = { version = "0.3.0", features = ["futures-executor"] }
-bytes = "1.7.2"
-console_error_panic_hook = "0.1"
-futures = "0.3.30"
-hydration_context = { version = "0.3.0" }
-leptos = { version = "0.8.9" }
-leptos_meta = { version = "0.8.5" }
-leptos_router = { version = "0.8.7" }
-leptos_wasi = { version = "0.3.1", default-features = false, features = ["wasip3"], optional = true }
-server_fn = { version = "0.8.7", features = ["axum-no-default"] }
-spin-sdk = { version = "6.0.0", optional = true }
-wasip3 = { version = "0.6.0", features = ["http-compat"], optional = true }
-wasm-bindgen = { version = "0.2", optional = true }
-web-sys = { version = "0.3", features = ["Storage", "Window"], optional = true }
+console_error_panic_hook = { version = "0.1", optional = true }
+leptos = { version = "=0.8.22", default-features = false }
+leptos_meta = { version = "=0.8.7", default-features = false }
+leptos_router = { version = "=0.8.17", default-features = false }
+# Temporary pin of the 0.4.2 line on wasip3 0.9 (`spawn_local`).
+# https://github.com/codeitlikemiley/leptos_wasi/pull/41
+# wasip3 =0.9.0 pins wit-bindgen =0.62.0. wasip2 still resolves wit-bindgen
+# 0.57.1 with no features. Do not enable `inter-task-wakeup` on 0.57.x.
+# Final target: a crates.io `leptos-wasi-runtime` release that depends on
+# wasip3 =0.9.0.
+leptos_wasi = { package = "leptos-wasi-runtime", git = "https://github.com/codeitlikemiley/leptos_wasi", rev = "d4f512eb18b64c8f78c385365be28acc023462eb", version = "0.4.2", default-features = false, features = ["wasip3"], optional = true }
+server_fn = { version = "=0.8.13", default-features = false, features = ["axum-no-default"] }
+# crates.io spin-sdk 7.0.0 is wasip3 0.7.1 (`spawn`). This rev is
+# https://github.com/codeitlikemiley/spin-rust-sdk/pull/1 and exports
+# `spawn_local`. Optional: the `ssr` feature does not link it, so the
+# standard component exports only wasi:http/handler@0.3.0. Final target is
+# an upstream spin-sdk release that depends on wasip3 0.9.0.
+spin-sdk = { git = "https://github.com/codeitlikemiley/spin-rust-sdk", rev = "3cf30012b50a1afb750dac3d28aa6da4a32c3468", version = "7.0.0", optional = true }
+wasip3 = { version = "=0.9.0", features = ["http-compat"], optional = true }
+wasm-bindgen = { version = "=0.2.129", optional = true }
+# Trusted-ingress only. Absent from the default `ssr` build so a standard
+# deploy does not link the HMAC verifier or apply ingress policy.
+base64 = { version = "0.22.1", optional = true }
+bytes = { version = "1.11.1", optional = true }
+http = { version = "1.4.1", optional = true }
+http-body-util = { version = "0.1.3", optional = true }
+# Temporary pin. https://github.com/codeitlikemiley/wasi-auth/pull/17
+# HMAC boundary and in-process replay defense on wasip3 0.9.
+# Final target: unpublished wasi-auth 0.1.0-rc.6.
+# `http` only: postgres and spin-sdk stay out of this guest.
+wasi-auth = { git = "https://github.com/codeitlikemiley/wasi-auth", rev = "bdfad80372287a3be4215aeefad534098ef6537b", version = "=0.1.0-rc.5", default-features = false, features = ["http"], optional = true }
+
+[workspace]
 
 [features]
 hydrate = [
   "leptos/hydrate",
+  "dep:console_error_panic_hook",
   "dep:wasm-bindgen",
-  "dep:web-sys",
 ]
 ssr = [
   "leptos/ssr",
@@ -38,7 +59,14 @@ ssr = [
   "leptos_router/ssr",
   "dep:leptos_wasi",
   "dep:wasip3",
-  "dep:spin-sdk",
+]
+trusted-ingress = [
+  "ssr",
+  "dep:base64",
+  "dep:bytes",
+  "dep:http",
+  "dep:http-body-util",
+  "dep:wasi-auth",
 ]
 
 [profile.wasm-release]
@@ -52,13 +80,11 @@ panic = "abort"
 output-name = "{{project-name | snake_case}}"
 tailwind-input-file = "input.css"
 assets-dir = "public"
-
-# == Hydrate (client)
+# WASI std cannot resolve current_exe(), which hashed asset names depend on.
+hash-files = false
 lib-profile-release = "wasm-release"
 lib-features = ["hydrate"]
-
-# == SSR
+lib-default-features = false
 bin-profile-release = "wasm-release"
-bin-target-triple = "wasm32-wasip2"
 bin-features = ["ssr"]
-bin-target-dir = "target/server"
+bin-default-features = false

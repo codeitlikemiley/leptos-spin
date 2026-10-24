@@ -1,0 +1,66 @@
+spin_manifest_version = 2
+
+[application]
+name = "{{project-name | kebab_case}}-middleware"
+version = "0.1.0"
+authors = ["{{authors}}"]
+description = "Opt-in Spin 4.2.5 native HTTP middleware around the standard component."
+
+# Profile 2 of 3. `spin up` does not use this file.
+# One fused secure-defaults component applies request-id and authn. It writes
+# nosniff, strict-origin-when-cross-origin, and CORS only when that field is
+# absent, so a downstream value is kept. Do not add the split components as
+# well. Do not point this manifest at the HMAC ingress build, and do not
+# serve a wac plug of this same component through this file.
+#
+# `/pkg/...` is a separate trigger with no middleware, so client assets
+# stay public. The Leptos guest does not write these response headers.
+[[trigger.http]]
+route = "/..."
+component = "{{project-name | kebab_case}}"
+executor = { type = "http" }
+dependencies.middleware = [
+  { component = "{{project-name | kebab_case}}-secure-defaults", inherit_configuration = ["environment", "allowed_outbound_hosts"] },
+]
+
+# Spin 4.2.5 rejects environment and allowed_outbound_hosts on a dependency.
+# secure-defaults inherits both from this component. The guest source does
+# not read these variables or open an outbound connection. The host still
+# permits this component to reach the loopback broker.
+[component.{{project-name | kebab_case}}]
+source = "target/wasm32-wasip2/release/{{project-name | snake_case}}.wasm"
+allowed_outbound_hosts = ["http://127.0.0.1:19101"]
+files = [{ source = "target/site", destination = "/site" }]
+[component.{{project-name | kebab_case}}.environment]
+LEPTOS_OUTPUT_NAME = "{{project-name | snake_case}}"
+LEPTOS_SITE_ROOT = "/site"
+LEPTOS_SITE_PKG_DIR = "pkg"
+WASI_MIDDLEWARE_CORS_ORIGINS = "http://127.0.0.1:3000"
+WASI_MIDDLEWARE_CORS_METHODS = "GET,HEAD,POST"
+WASI_MIDDLEWARE_CORS_HEADERS = "content-type,x-request-id"
+WASI_MIDDLEWARE_CORS_ALLOW_CREDENTIALS = "false"
+# Optional mode skips the broker when Authorization is absent, so the public
+# counter still renders. A presented credential is verified. Broker URL,
+# service id, and audiences are required even in this mode.
+WASI_MIDDLEWARE_AUTHN_BROKER_URL = "http://127.0.0.1:19101/authenticate"
+WASI_MIDDLEWARE_AUTHN_MODE = "optional"
+WASI_MIDDLEWARE_SERVICE_ID = "{{project-name | kebab_case}}"
+WASI_MIDDLEWARE_AUTHN_AUDIENCES = "api://{{project-name | kebab_case}}"
+WASI_MIDDLEWARE_AUTHN_ALLOW_INSECURE_LOOPBACK = "true"
+
+# Build this Wasm from codeitlikemiley/wasi-http-middleware @
+# 3df96c21a7906b885e67229e9a7c8c01b6497109. It is not vendored.
+# That commit sets security and CORS headers only when they are absent.
+# Final target: unpublished tag v0.2.0-alpha.4. The component must import
+# and export wasi:http/handler@0.3.0.
+[component.{{project-name | kebab_case}}-secure-defaults]
+source = "target/middleware/secure-defaults.wasm"
+
+[[trigger.http]]
+route = "/pkg/..."
+component = "{{project-name | kebab_case}}-pkg"
+
+[component.{{project-name | kebab_case}}-pkg]
+source = { url = "https://github.com/fermyon/spin-fileserver/releases/download/v0.1.0/spin_static_fs.wasm", digest = "sha256:96c76d9af86420b39eb6cd7be5550e3cb5d4cc4de572ce0fd1f6a29471536cb4" }
+files = [{ source = "target/site/pkg", destination = "/" }]
+environment = { CACHE_CONTROL = "no-cache" }

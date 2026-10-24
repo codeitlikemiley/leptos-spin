@@ -1,10 +1,8 @@
-use components::{Route, Router, Routes};
+use leptos::form::ActionForm;
 use leptos::prelude::*;
 use leptos_meta::*;
-use leptos_router::*;
-
-#[cfg(feature = "hydrate")]
-use web_sys::window;
+use leptos_router::components::{Route, Router, Routes};
+use leptos_router::path;
 
 #[cfg(feature = "ssr")]
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -35,11 +33,9 @@ pub fn App() -> impl IntoView {
         <Stylesheet id="leptos" href="/pkg/{{project-name | snake_case}}.css" />
         <Meta
             name="description"
-            content="A website running its server-side as a WASIp3 Component :D"
+            content="A website running its server-side as a WASI Component :D"
         />
-
-        <Title text="Welcome to Leptos X WASIp3!" />
-
+        <Title text="Welcome to Leptos X WASIp3" />
         <Router>
             <main>
                 <Routes fallback>
@@ -54,144 +50,42 @@ pub fn App() -> impl IntoView {
 #[component]
 fn HomePage() -> impl IntoView {
     let increment_action = ServerAction::<IncrementCount>::new();
-    let (optimistic_count, set_optimistic_count) = signal(None::<u32>);
-    let count = Resource::new(move || increment_action.version().get(), |_| get_count());
-
-    Effect::new(move |_| {
-        if optimistic_count.get().is_none() {
-            #[cfg(feature = "hydrate")]
-            {
-                if let Some(window) = window() {
-                    if let Ok(Some(storage)) = window.local_storage() {
-                        if let Ok(Some(cached_count_str)) = storage.get_item("{{project-name | snake_case}}_count") {
-                            if let Ok(cached_count) = cached_count_str.parse::<u32>() {
-                                set_optimistic_count.set(Some(cached_count));
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if let Some(Ok(server_count)) = count.get() {
-                set_optimistic_count.set(Some(server_count));
-
-                #[cfg(feature = "hydrate")]
-                {
-                    if let Some(window) = window() {
-                        if let Ok(Some(storage)) = window.local_storage() {
-                            let _ = storage.set_item("{{project-name | snake_case}}_count", &server_count.to_string());
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    Effect::new(move |_| {
-        if let Some(Ok(server_count)) = count.get() {
-            if let Some(current_optimistic) = optimistic_count.get() {
-                if server_count != current_optimistic {
-                    set_optimistic_count.set(Some(server_count));
-                }
-            }
-
-            #[cfg(feature = "hydrate")]
-            {
-                if let Some(window) = window() {
-                    if let Ok(Some(storage)) = window.local_storage() {
-                        let _ = storage.set_item("{{project-name | snake_case}}_count", &server_count.to_string());
-                    }
-                }
-            }
-        }
-    });
-
-    let display_count = move || {
-        if let Some(opt_count) = optimistic_count.get() {
-            opt_count.to_string()
-        } else {
-            "...".to_string()
-        }
-    };
+    let count = Resource::new(
+        move || increment_action.version().get(),
+        |_| get_count(),
+    );
 
     view! {
         <div class="min-h-screen bg-[#1a2332] flex items-center justify-center p-4">
             <div class="bg-[#263343] rounded-xl shadow-2xl p-8 md:p-12 max-w-md w-full border border-[#3a4a5c]">
                 <div class="text-center space-y-8">
                     <div class="space-y-2">
-                        <div class="flex items-center justify-center gap-3 mb-4">
-                            <div class="w-10 h-10 bg-[#00d4aa] rounded-lg flex items-center justify-center">
-                                <span class="text-[#1a2332] font-bold text-xl">L</span>
-                            </div>
-                            <h1 class="text-3xl md:text-4xl font-medium text-white">
-                                "{{project-name}}"
-                            </h1>
-                        </div>
+                        <h1 class="text-3xl md:text-4xl font-medium text-white">
+                            "{{project-name}}"
+                        </h1>
                         <p class="text-[#8b9cb8] text-sm">
-                            "Powered by Leptos + WASI Preview 3 Component"
+                            "Powered by Leptos on a WASI HTTP component"
                         </p>
                     </div>
-
-                    <div class="relative">
-                        <div class="bg-[#1a2332] rounded-lg p-8 border border-[#3a4a5c]">
-                            <div class="text-5xl md:text-6xl font-light text-white tabular-nums">
-                                {display_count}
-                            </div>
-                            <div class="text-[#8b9cb8] text-sm mt-2 uppercase tracking-wider">
-                                "COUNT VALUE"
-                            </div>
+                    <div class="bg-[#1a2332] rounded-lg p-8 border border-[#3a4a5c]">
+                        <div class="text-5xl md:text-6xl font-light text-white tabular-nums" data-testid="count">
+                            {move || count.get().map(|result| match result {
+                                Ok(value) => value.to_string(),
+                                Err(_) => "error".to_string(),
+                            }).unwrap_or_else(|| "...".to_string())}
                         </div>
-
-                        <Show when=move || increment_action.pending().get()>
-                            <div class="absolute inset-0 flex items-center justify-center bg-[#1a2332]/50 rounded-lg">
-                                <div class="animate-spin rounded-full h-8 w-8 border-2 border-transparent border-t-[#00d4aa]"></div>
-                            </div>
-                        </Show>
+                        <div class="text-[#8b9cb8] text-sm mt-2 uppercase tracking-wider">
+                            "Count Value"
+                        </div>
                     </div>
-
                     <ActionForm action=increment_action>
                         <button
                             disabled=move || increment_action.pending().get()
-                            class="w-full rounded-lg bg-[#00d4aa] px-6 py-3 text-[#1a2332] font-medium transition-all duration-200 hover:bg-[#00b894] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#00d4aa]"
+                            class="w-full rounded-lg bg-[#00d4aa] px-6 py-3 text-[#1a2332] font-medium"
                         >
-                            {move || if increment_action.pending().get() {
-                                "Updating..."
-                            } else {
-                                "Increment Counter"
-                            }}
+                            "Increment Counter"
                         </button>
                     </ActionForm>
-
-                    <div class="flex items-center justify-center gap-2 text-xs">
-                        <div class={move || {
-                            if optimistic_count.get().is_none() {
-                                "w-2 h-2 rounded-full bg-yellow-500 animate-pulse"
-                            } else if increment_action.pending().get() {
-                                "w-2 h-2 rounded-full bg-[#00d4aa] animate-pulse"
-                            } else {
-                                "w-2 h-2 rounded-full bg-[#00d4aa]"
-                            }
-                        }}>
-                        </div>
-                        <span class="text-[#8b9cb8] uppercase tracking-wider">
-                            {move || {
-                                if optimistic_count.get().is_none() {
-                                    "Loading"
-                                } else if increment_action.pending().get() {
-                                    "Syncing"
-                                } else {
-                                    "Ready"
-                                }
-                            }}
-                        </span>
-                    </div>
-
-                    <div class="pt-4 border-t border-[#3a4a5c]">
-                        <p class="text-[#8b9cb8] text-xs">
-                            "Running on raw Wasmtime serve"
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>
@@ -202,8 +96,8 @@ fn HomePage() -> impl IntoView {
 fn NotFound() -> impl IntoView {
     #[cfg(feature = "ssr")]
     {
-        if let Some(resp) = use_context::<leptos_wasi::response::ResponseOptions>() {
-            resp.set_status(leptos_wasi::prelude::StatusCode::NOT_FOUND);
+        if let Some(response) = use_context::<leptos_wasi::response::ResponseOptions>() {
+            response.set_status(leptos_wasi::prelude::StatusCode::NOT_FOUND);
         }
     }
 
@@ -211,90 +105,49 @@ fn NotFound() -> impl IntoView {
 }
 
 #[cfg(feature = "ssr")]
-mod storage {
-    #[cfg(runtime_spin)]
-    pub async fn get(key: &str) -> Result<Option<Vec<u8>>, String> {
-        use spin_sdk::key_value::Store;
-        let store = Store::open_default().await
-            .map_err(|e| format!("Failed to open Spin KV store: {}", e))?;
-        store.get(key).await
-            .map_err(|e| format!("Failed to get from Spin KV: {}", e))
+fn update_count(increment: bool) -> u32 {
+    use std::sync::Mutex;
+    static COUNT: Mutex<u32> = Mutex::new(0);
+    let mut count = COUNT.lock().unwrap_or_else(|poison| poison.into_inner());
+    if increment {
+        *count = count.saturating_add(1);
     }
-
-    #[cfg(runtime_spin)]
-    pub async fn set(key: &str, value: &[u8]) -> Result<(), String> {
-        use spin_sdk::key_value::Store;
-        let store = Store::open_default().await
-            .map_err(|e| format!("Failed to open Spin KV store: {}", e))?;
-        store.set(key, value).await
-            .map_err(|e| format!("Failed to set in Spin KV: {}", e))
-    }
-
-    #[cfg(not(runtime_spin))]
-    pub async fn get(key: &str) -> Result<Option<Vec<u8>>, String> {
-        use std::fs;
-        use std::path::Path;
-
-        let base_path = std::env::var("STORAGE_PATH").unwrap_or_else(|_| "./data".to_string());
-        let file_path = format!("{}/{}.txt", base_path, key);
-        let path = Path::new(&file_path);
-
-        if !path.exists() {
-            return Ok(None);
-        }
-
-        fs::read(&file_path)
-            .map(Some)
-            .map_err(|e| format!("Failed to read file: {}", e))
-    }
-
-    #[cfg(not(runtime_spin))]
-    pub async fn set(key: &str, value: &[u8]) -> Result<(), String> {
-        use std::fs;
-        use std::path::Path;
-
-        let base_path = std::env::var("STORAGE_PATH").unwrap_or_else(|_| "./data".to_string());
-        let dir_path = Path::new(&base_path);
-        if !dir_path.exists() {
-            fs::create_dir_all(dir_path)
-                .map_err(|e| format!("Failed to create directory: {}", e))?;
-        }
-
-        let file_path = format!("{}/{}.txt", base_path, key);
-        fs::write(&file_path, value)
-            .map_err(|e| format!("Failed to write file: {}", e))
-    }
+    *count
 }
 
-#[server(prefix = "/api")]
+#[server(prefix = "/api", endpoint = "get_count")]
 pub async fn get_count() -> Result<u32, ServerFnError<String>> {
-    match storage::get("{{project-name | snake_case}}").await {
-        Ok(Some(value)) => {
-            let count_str = String::from_utf8(value)
-                .map_err(|e| ServerFnError::ServerError(format!("Invalid UTF-8: {}", e)))?;
-            let count = count_str.parse::<u32>().unwrap_or(0);
-            println!("Retrieved count: {count}");
-            Ok(count)
-        }
-        Ok(None) => {
-            println!("No count found, returning 0");
-            Ok(0)
-        }
-        Err(e) => {
-            eprintln!("Error reading counter: {}", e);
-            Ok(0)
-        }
+    #[cfg(feature = "ssr")]
+    {
+        return Ok(update_count(false));
     }
+    #[cfg(not(feature = "ssr"))]
+    Ok(0)
 }
 
-#[server(prefix = "/api")]
-pub async fn increment_count() -> Result<(), ServerFnError<String>> {
-    let current_count = get_count().await?;
-    let new_count = current_count + 1;
-    println!("Incrementing count from {current_count} to {new_count}");
+#[server(prefix = "/api", endpoint = "increment_count")]
+pub async fn increment_count() -> Result<u32, ServerFnError<String>> {
+    #[cfg(feature = "ssr")]
+    {
+        let count = update_count(true);
+        println!("incremented count to {count}");
+        return Ok(count);
+    }
+    #[cfg(not(feature = "ssr"))]
+    Ok(0)
+}
 
-    storage::set("{{project-name | snake_case}}", new_count.to_string().as_bytes()).await
-        .map_err(|e| ServerFnError::ServerError(e))?;
-
-    Ok(())
+// Input encoding is the server-fn default, `PostUrl`. The generation check
+// posts `value=` plus 61434 letters, a 61440-byte body, and expects `61434`.
+#[server(prefix = "/api", endpoint = "echo_len")]
+pub async fn echo_len(value: String) -> Result<u32, ServerFnError<String>> {
+    #[cfg(feature = "ssr")]
+    {
+        return Ok(u32::try_from(value.len()).unwrap_or(u32::MAX));
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        let _ = value;
+        Ok(0)
+    }
 }

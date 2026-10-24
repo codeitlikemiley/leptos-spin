@@ -1,3 +1,4 @@
 fn main() {
-    // Unused; required for cargo-leptos to build the front as it also wants to build a bin
+    // cargo-leptos builds a bin target for the client. The WASI server is a
+    // cdylib and does not use this function.
 }
