@@ -38,6 +38,11 @@ wasm-bindgen = "=0.2.129"
 # https://github.com/codeitlikemiley/wasi-auth/pull/17
 # Final target: unpublished wasi-auth 0.1.0-rc.6.
 # Feature `http` only. postgres and spin-sdk are not enabled.
+# Fresh spin new on 2026-10-24T14:24:59Z resolved this rev as 0.1.0-rc.5
+# for features ssr,trusted-ingress and omitted it from ssr. The guest
+# served on Spin 4.2.5: empty key plus Authorization was 503; with the
+# key injected by --env, Authorization, a session cookie, and a bogus
+# envelope were each 401.
 wasi-auth = { git = "https://github.com/codeitlikemiley/wasi-auth", rev = "bdfad80372287a3be4215aeefad534098ef6537b", version = "=0.1.0-rc.5" }
 # Temporary git pin. crates.io spin-sdk 7.0.0 is wasip3 0.7.1.
 # Final target: an upstream spin-sdk release on wasip3 0.9.0.
@@ -53,12 +58,12 @@ published_0_4_2 = "requires wasip3 =0.7.0 and calls wasip3::spawn"
 git = "https://github.com/codeitlikemiley/leptos_wasi"
 rev = "87e1476938c2b23d598a3fcc74a7acb094aac855"
 version = "0.4.2"
-status = "declared; scripts/check-generated-app.sh records the resolve and Spin run"
+status = "resolved 0.4.2 from rev 87e1476938c2b23d598a3fcc74a7acb094aac855; fresh spin new 2026-10-24T14:24:59Z served SSR, server fn POST, and /pkg on Spin 4.2.5"
 
 [profiles]
 standard = "spin.toml; features ssr; no dependencies.middleware; no HMAC"
 middleware = "spin.middleware.toml; one secure-defaults component; headers only when absent"
-trusted_ingress = "spin.trusted-ingress.toml; separate target dir; HMAC guest"
+trusted_ingress = "spin.trusted-ingress.toml; separate target dir; HMAC guest; --listen 127.0.0.1:3009; key via --env AUTH_TRUSTED_INGRESS_KEY_BASE64"
 wasmtime_precompose = "deploy/compose-middleware.sh plugs one secure-defaults.wasm; not used with spin.middleware.toml"
 
 [wasi-http-middleware]
@@ -71,4 +76,4 @@ rev = "3df96c21a7906b885e67229e9a7c8c01b6497109"
 final_target = "v0.2.0-alpha.4"
 component = "secure-defaults"
 wit_bindgen = "=0.62.0 features async-spawn; inter-task-wakeup is not enabled"
-status = "declared; the generation check builds secure-defaults.wasm from this rev"
+status = "secure-defaults.wasm 401706 bytes built from this rev and served on Spin 4.2.5; security and CORS headers appeared once"
