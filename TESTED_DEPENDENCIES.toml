@@ -58,9 +58,8 @@ published_0_4_2 = "requires wasip3 =0.7.0 and calls wasip3::spawn"
 git = "https://github.com/codeitlikemiley/leptos_wasi"
 rev = "d4f512eb18b64c8f78c385365be28acc023462eb"
 version = "0.4.2"
-# Replaces 87e1476938c2b23d598a3fcc74a7acb094aac855. That earlier rev was
-# served on 2026-10-24T14:24:59Z. This rev is the PR #41 head.
-status = "pin d4f512eb18b64c8f78c385365be28acc023462eb; generation check for this rev is recorded by scripts/check-generated-app.sh"
+# Replaces 87e1476938c2b23d598a3fcc74a7acb094aac855.
+status = "resolved 0.4.2 from d4f512eb18b64c8f78c385365be28acc023462eb; fresh spin new 2026-10-24T14:52:41Z, cargo tree -i wasip3 only 0.9.0, SSR, server fn, 60 KiB POST, and /pkg on Spin 4.2.5"
 
 [profiles]
 standard = "spin.toml; features ssr; no dependencies.middleware; no HMAC"
