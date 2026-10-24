@@ -34,7 +34,11 @@ wit_bindgen = "=0.62.0"
 # That is the p2 edge, not a second wasip3. Do not enable inter-task-wakeup.
 wit_bindgen_wasip2 = "0.57.1"
 wasm-bindgen = "=0.2.129"
-wasi-auth = "=0.1.0-rc.5"
+# Temporary pin. Package version at this rev is still 0.1.0-rc.5.
+# https://github.com/codeitlikemiley/wasi-auth/pull/17
+# Final target: unpublished wasi-auth 0.1.0-rc.6.
+# Feature `http` only. postgres and spin-sdk are not enabled.
+wasi-auth = { git = "https://github.com/codeitlikemiley/wasi-auth", rev = "bdfad80372287a3be4215aeefad534098ef6537b", version = "=0.1.0-rc.5" }
 # Temporary git pin. crates.io spin-sdk 7.0.0 is wasip3 0.7.1.
 # Final target: an upstream spin-sdk release on wasip3 0.9.0.
 spin-sdk = { git = "https://github.com/codeitlikemiley/spin-rust-sdk", rev = "3cf30012b50a1afb750dac3d28aa6da4a32c3468", version = "7.0.0" }

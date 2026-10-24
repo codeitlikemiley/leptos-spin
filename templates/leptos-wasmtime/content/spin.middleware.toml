@@ -20,27 +20,21 @@ route = "/..."
 component = "{{project-name | kebab_case}}"
 executor = { type = "http" }
 dependencies.middleware = [
-  { component = "{{project-name | kebab_case}}-secure-defaults" },
+  { component = "{{project-name | kebab_case}}-secure-defaults", inherit_configuration = ["environment", "allowed_outbound_hosts"] },
 ]
 
+# Spin 4.2.5 rejects environment and allowed_outbound_hosts on a dependency.
+# secure-defaults inherits both from this component. The guest source does
+# not read these variables or open an outbound connection. The host still
+# permits this component to reach the loopback broker.
 [component.{{project-name | kebab_case}}]
 source = "target/wasm32-wasip2/release/{{project-name | snake_case}}.wasm"
-allowed_outbound_hosts = []
+allowed_outbound_hosts = ["http://127.0.0.1:19101"]
 files = [{ source = "target/site", destination = "/site" }]
 [component.{{project-name | kebab_case}}.environment]
 LEPTOS_OUTPUT_NAME = "{{project-name | snake_case}}"
 LEPTOS_SITE_ROOT = "/site"
 LEPTOS_SITE_PKG_DIR = "pkg"
-
-# Build this Wasm from codeitlikemiley/wasi-http-middleware @
-# 3df96c21a7906b885e67229e9a7c8c01b6497109. It is not vendored.
-# That commit sets security and CORS headers only when they are absent.
-# Final target: unpublished tag v0.2.0-alpha.4. The component must import
-# and export wasi:http/handler@0.3.0.
-[component.{{project-name | kebab_case}}-secure-defaults]
-source = "target/middleware/secure-defaults.wasm"
-allowed_outbound_hosts = ["http://127.0.0.1:19101"]
-[component.{{project-name | kebab_case}}-secure-defaults.environment]
 WASI_MIDDLEWARE_CORS_ORIGINS = "http://127.0.0.1:3000"
 WASI_MIDDLEWARE_CORS_METHODS = "GET,HEAD,POST"
 WASI_MIDDLEWARE_CORS_HEADERS = "content-type,x-request-id"
@@ -53,6 +47,14 @@ WASI_MIDDLEWARE_AUTHN_MODE = "optional"
 WASI_MIDDLEWARE_SERVICE_ID = "{{project-name | kebab_case}}"
 WASI_MIDDLEWARE_AUTHN_AUDIENCES = "api://{{project-name | kebab_case}}"
 WASI_MIDDLEWARE_AUTHN_ALLOW_INSECURE_LOOPBACK = "true"
+
+# Build this Wasm from codeitlikemiley/wasi-http-middleware @
+# 3df96c21a7906b885e67229e9a7c8c01b6497109. It is not vendored.
+# That commit sets security and CORS headers only when they are absent.
+# Final target: unpublished tag v0.2.0-alpha.4. The component must import
+# and export wasi:http/handler@0.3.0.
+[component.{{project-name | kebab_case}}-secure-defaults]
+source = "target/middleware/secure-defaults.wasm"
 
 [[trigger.http]]
 route = "/pkg/..."

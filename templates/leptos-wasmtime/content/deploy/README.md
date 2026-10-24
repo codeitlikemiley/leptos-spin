@@ -29,7 +29,7 @@ spin build
 spin up -f spin.middleware.toml
 ```
 
-`dependencies.middleware` lists one component, `secure-defaults`, from `codeitlikemiley/wasi-http-middleware` commit `3df96c21a7906b885e67229e9a7c8c01b6497109` (https://github.com/codeitlikemiley/wasi-http-middleware/pull/1). That commit writes `x-content-type-options`, `referrer-policy`, and `Access-Control-*` only when the field is absent. The Leptos guest source does not write those headers. `/pkg/...` has no middleware entry. Do not also attach the split request-id, security-headers, cors, or authn-policy components.
+`dependencies.middleware` lists one component, `secure-defaults`, from `codeitlikemiley/wasi-http-middleware` commit `3df96c21a7906b885e67229e9a7c8c01b6497109` (https://github.com/codeitlikemiley/wasi-http-middleware/pull/1). That commit writes `x-content-type-options`, `referrer-policy`, and `Access-Control-*` only when the field is absent. The Leptos guest source does not write those headers. `/pkg/...` has no middleware entry. Do not also attach the split request-id, security-headers, cors, or authn-policy components. Spin 4.2.5 does not allow a dependency to declare `environment` or `allowed_outbound_hosts`, so `secure-defaults` inherits both from the Leptos component. The guest does not read those variables.
 
 `leptos-wasi-runtime` inserts one `nosniff` when that field is absent. `secure-defaults` leaves that value in place and adds `referrer-policy` and CORS only when the response does not already have them, so each of those headers appears once. The standard profile has no middleware, so that single runtime header is the only one.
 
@@ -39,7 +39,7 @@ The Wasm file is not in this template. The final target is unpublished tag `v0.2
 
 ## 3. Trusted ingress
 
-`wasi-auth` 0.1.0-rc.5's native ingress listens on `127.0.0.1:3008` and forwards to this component on `127.0.0.1:3009`. It seals `x-wasi-auth-context` with HMAC-SHA-256 over audience, method, path, and request id (`wasi_auth::http::TrustedContextCodec`). The audience default is `fullstack-app`. The replay window default is 5 seconds.
+`wasi-auth` git `bdfad80372287a3be4215aeefad534098ef6537b` (https://github.com/codeitlikemiley/wasi-auth/pull/17) is the HMAC codec. Final target is unpublished `0.1.0-rc.6`. Its native ingress listens on `127.0.0.1:3008` and forwards to this component on `127.0.0.1:3009`. It seals `x-wasi-auth-context` with HMAC-SHA-256 over audience, method, path, and request id. The guest calls `accept_signed_trusted_context`, which checks that binding and rejects a second presentation in the same process. The audience default is `fullstack-app`. The freshness window default is 5 seconds.
 
 ```bash
 spin build -f spin.trusted-ingress.toml
@@ -51,4 +51,4 @@ The key is a Spin secret variable. The manifest default is empty, and an empty k
 
 The guest rejects a credential or an envelope that does not verify, then strips `x-wasi-auth-context`, `Authorization`, and `Cookie` before Leptos runs. It does not call `apply_response_security` and it does not compose middleware. Anonymous requests with neither a credential nor an envelope still render, so a private misbind does not invent a second login page. Production should keep this port on loopback; the ingress is the public listener and exempts `/pkg/...`.
 
-`wasi-auth` 0.1.0-rc.5 with the `http` feature is the crates.io target. The ingress binary and PostgreSQL are not started by this template.
+The guest enables only the `http` feature. PostgreSQL and `spin-sdk` are not linked. The ingress binary and PostgreSQL are not started by this template.

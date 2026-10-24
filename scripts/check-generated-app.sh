@@ -84,7 +84,15 @@ need(middleware, "dependencies.middleware", "spin.middleware.toml")
 need(middleware, "secure-defaults.wasm", "spin.middleware.toml")
 need(middleware, "WASI_MIDDLEWARE_CORS_ORIGINS", "spin.middleware.toml")
 need(middleware, "3df96c21a7906b885e67229e9a7c8c01b6497109", "spin.middleware.toml")
+need(middleware, 'inherit_configuration = ["environment", "allowed_outbound_hosts"]', "spin.middleware.toml")
 need(cargo, "87e1476938c2b23d598a3fcc74a7acb094aac855", "Cargo.toml")
+need(cargo, "bdfad80372287a3be4215aeefad534098ef6537b", "Cargo.toml")
+secure_start = middleware.find("-secure-defaults]")
+secure_tail = middleware[secure_start:]
+secure_end = secure_tail.find("\n[[")
+secure_section = secure_tail if secure_end < 0 else secure_tail[:secure_end]
+if "allowed_outbound_hosts" in secure_section or "WASI_MIDDLEWARE_" in secure_section:
+    errors.append("secure-defaults component declares its own configuration")
 forbid(middleware, "-middleware.wasm", "spin.middleware.toml")
 forbid(middleware, "security-headers.wasm", "spin.middleware.toml")
 forbid(middleware, "request-id.wasm", "spin.middleware.toml")
@@ -223,6 +231,13 @@ if "spin-sdk" in resolved:
 if expect_auth:
     if resolved.get("wasi-auth") != {wanted["wasi-auth"]}:
         errors.append(f"wasi-auth: resolved {sorted(resolved.get('wasi-auth', ()))}, expected {wanted['wasi-auth']}")
+    auth_sources = [
+        pkg.get("source") or ""
+        for pkg in meta["packages"]
+        if pkg["name"] == "wasi-auth"
+    ]
+    if not any("bdfad80372287a3be4215aeefad534098ef6537b" in source for source in auth_sources):
+        errors.append(f"wasi-auth git rev missing from {auth_sources}")
 elif "wasi-auth" in resolved:
     errors.append("wasi-auth is present on the standard ssr resolve")
 text = "\n".join(lines)
@@ -675,7 +690,7 @@ PY
   expect_status "$auth_headers" 401 "${name} trusted-ingress Authorization without envelope"
   local cookie_headers="${WORK}/${name}.ingress.cookie.headers"
   local cookie_body="${WORK}/${name}.ingress.cookie.body"
-  fetch_headers "$cookie_headers" "$cookie_body" "${base}/" -H 'cookie: session=1'
+  fetch_headers "$cookie_headers" "$cookie_body" "${base}/" -H 'cookie: wasi_auth_dev_session=1'
   expect_status "$cookie_headers" 401 "${name} trusted-ingress Cookie without envelope"
   local bogus_headers="${WORK}/${name}.ingress.bogus.headers"
   local bogus_body="${WORK}/${name}.ingress.bogus.body"

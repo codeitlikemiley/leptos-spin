@@ -75,43 +75,45 @@ fn internal_error(error: impl std::fmt::Display) -> ErrorCode {
 fn enforce_trusted_ingress<B>(
     request: &mut http::Request<B>,
 ) -> Result<(), http::StatusCode> {
-    use wasi_auth::http::{
-        AUTH_CONTEXT_HEADER, REQUEST_ID_HEADER, strip_untrusted_auth_metadata,
-    };
+    use wasi_auth::http::{accept_signed_trusted_context, strip_untrusted_auth_metadata};
 
-    let has_envelope = request.headers().contains_key(AUTH_CONTEXT_HEADER);
-    let has_credential = request.headers().contains_key(http::header::AUTHORIZATION)
-        || request.headers().contains_key(http::header::COOKIE);
-    if !has_envelope && !has_credential {
+    // Anonymous requests never load the key. A credential or an envelope does,
+    // so a missing key fails closed before the HMAC check.
+    if !trusted_material_present(request.headers()) {
         strip_untrusted_auth_metadata(request.headers_mut());
         return Ok(());
     }
 
     let codec = ingress_codec().map_err(|()| http::StatusCode::SERVICE_UNAVAILABLE)?;
-    let envelope = single_header(request.headers(), &AUTH_CONTEXT_HEADER)
-        .ok_or(http::StatusCode::UNAUTHORIZED)?;
-    let request_id = single_header(request.headers(), &REQUEST_ID_HEADER)
-        .ok_or(http::StatusCode::UNAUTHORIZED)?;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|_| http::StatusCode::SERVICE_UNAVAILABLE)?
         .as_secs();
-    codec
-        .open(
-            envelope,
-            request.method(),
-            request.uri().path(),
-            request_id,
-            now,
-        )
-        .map_err(|_| http::StatusCode::UNAUTHORIZED)?;
+    // Verifies the HMAC binding and consumes the envelope so a second
+    // presentation in this process is rejected. The function also strips the
+    // envelope and caller credentials before Leptos runs.
+    accept_signed_trusted_context(codec, request, now)
+        .map(|_| ())
+        .map_err(|_| http::StatusCode::UNAUTHORIZED)
+}
 
-    // The ingress already authenticated. Drop the envelope and credentials so
-    // application code cannot authenticate a second time from wire headers.
-    strip_untrusted_auth_metadata(request.headers_mut());
-    request.headers_mut().remove(http::header::AUTHORIZATION);
-    request.headers_mut().remove(http::header::COOKIE);
-    Ok(())
+#[cfg(feature = "trusted-ingress")]
+fn trusted_material_present(headers: &http::HeaderMap) -> bool {
+    headers.contains_key(wasi_auth::http::AUTH_CONTEXT_HEADER)
+        || headers.contains_key(http::header::AUTHORIZATION)
+        || headers.contains_key(http::header::PROXY_AUTHORIZATION)
+        || headers.get_all(http::header::COOKIE).iter().any(|value| {
+            value.to_str().is_ok_and(|text| {
+                text.split(';').any(|part| {
+                    let name = part
+                        .trim()
+                        .split_once('=')
+                        .map(|(name, _)| name.trim())
+                        .unwrap_or("");
+                    name == "__Host-session" || name == "wasi_auth_dev_session"
+                })
+            })
+        })
 }
 
 #[cfg(feature = "trusted-ingress")]
@@ -143,19 +145,6 @@ fn load_ingress_codec() -> Result<wasi_auth::http::TrustedContextCodec, ()> {
         codec = codec.with_max_age_seconds(max_age).map_err(|_| ())?;
     }
     Ok(codec)
-}
-
-#[cfg(feature = "trusted-ingress")]
-fn single_header<'a>(
-    headers: &'a http::HeaderMap,
-    name: &http::HeaderName,
-) -> Option<&'a str> {
-    let mut values = headers.get_all(name).iter();
-    let value = values.next()?.to_str().ok()?;
-    if values.next().is_some() || value.is_empty() {
-        return None;
-    }
-    Some(value)
 }
 
 #[cfg(feature = "trusted-ingress")]
