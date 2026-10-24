@@ -1,7 +1,7 @@
 #[cfg(feature = "trusted-ingress")]
 use std::sync::OnceLock;
 
-use crate::app::{App, GetCount, IncrementCount};
+use crate::app::{App, EchoLen, GetCount, IncrementCount};
 use leptos::config::get_configuration;
 use leptos_wasi::wasip3::prelude::{
     Handler, RegistrationError, RouteTable, init_wasip3_spawner,
@@ -44,6 +44,7 @@ impl wasip3::exports::http::handler::Guest for LeptosServer {
             .map_err(internal_error)?
             .with_server_fn::<GetCount>()
             .with_server_fn::<IncrementCount>()
+            .with_server_fn::<EchoLen>()
             .generate_routes_from(&routes)
             .map_err(internal_error)?
             .handle_with_context(move || crate::app::shell(leptos_options.clone()), || {})

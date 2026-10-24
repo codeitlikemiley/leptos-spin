@@ -136,3 +136,16 @@ pub async fn increment_count() -> Result<u32, ServerFnError<String>> {
     #[cfg(not(feature = "ssr"))]
     Ok(0)
 }
+
+#[server(prefix = "/api", endpoint = "echo_len")]
+pub async fn echo_len(value: String) -> Result<u32, ServerFnError<String>> {
+    #[cfg(feature = "ssr")]
+    {
+        return Ok(u32::try_from(value.len()).unwrap_or(u32::MAX));
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        let _ = value;
+        Ok(0)
+    }
+}

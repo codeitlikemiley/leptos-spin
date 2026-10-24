@@ -85,7 +85,7 @@ need(middleware, "secure-defaults.wasm", "spin.middleware.toml")
 need(middleware, "WASI_MIDDLEWARE_CORS_ORIGINS", "spin.middleware.toml")
 need(middleware, "3df96c21a7906b885e67229e9a7c8c01b6497109", "spin.middleware.toml")
 need(middleware, 'inherit_configuration = ["environment", "allowed_outbound_hosts"]', "spin.middleware.toml")
-need(cargo, "87e1476938c2b23d598a3fcc74a7acb094aac855", "Cargo.toml")
+need(cargo, "d4f512eb18b64c8f78c385365be28acc023462eb", "Cargo.toml")
 need(cargo, "bdfad80372287a3be4215aeefad534098ef6537b", "Cargo.toml")
 secure_start = middleware.find("-secure-defaults]")
 secure_tail = middleware[secure_start:]
@@ -224,8 +224,15 @@ for version, features, parents in wit_nodes:
         continue
     errors.append(f"unexpected wit-bindgen {version} features={features} parents={parents}")
 wasip3_versions = resolved.get("wasip3", set())
-if any(v.startswith("0.4.") or v.startswith("0.6.") for v in wasip3_versions):
-    errors.append(f"old wasip3 still resolved: {sorted(wasip3_versions)}")
+if wasip3_versions != {"0.9.0+wasi-0.3.0"}:
+    errors.append(f"wasip3 must be only 0.9.0+wasi-0.3.0, got {sorted(wasip3_versions)}")
+runtime_sources = [
+    pkg.get("source") or ""
+    for pkg in meta["packages"]
+    if pkg["name"] == "leptos-wasi-runtime"
+]
+if not any("d4f512eb18b64c8f78c385365be28acc023462eb" in source for source in runtime_sources):
+    errors.append(f"leptos-wasi-runtime git rev missing from {runtime_sources}")
 if "spin-sdk" in resolved:
     errors.append(f"spin-sdk is linked into this feature set: {sorted(resolved['spin-sdk'])}")
 if expect_auth:
@@ -248,6 +255,29 @@ if errors:
     print("\n".join(errors), file=sys.stderr)
     sys.exit(1)
 PY
+  assert_wasip3_tree "$dir" "$(basename "$dir") ${features}" --features "$features"
+}
+
+assert_wasip3_tree() {
+  local dir="$1"
+  local label="$2"
+  shift 2
+  local tree
+  tree="$(cd "$dir" && cargo tree -i wasip3 --locked --target wasm32-wasip2 "$@")"
+  log "cargo tree -i wasip3 --locked --target wasm32-wasip2 $(printf '%q ' "$@")(${label})"
+  printf '%s\n' "$tree" | tee -a "$EVIDENCE"
+  local other
+  other="$(printf '%s\n' "$tree" | grep -E 'wasip3 v' | grep -v 'wasip3 v0\.9\.0' || true)"
+  if [[ -n "$other" ]]; then
+    log "FAIL ${label} cargo tree -i wasip3 is not only 0.9.0"
+    printf '%s\n' "$other" | tee -a "$EVIDENCE"
+    exit 1
+  fi
+  if ! printf '%s\n' "$tree" | grep -q 'wasip3 v0\.9\.0'; then
+    log "FAIL ${label} cargo tree -i wasip3 did not show 0.9.0"
+    exit 1
+  fi
+  log "PASS ${label} cargo tree -i wasip3 only 0.9.0"
 }
 
 # `cargo fetch` has no `--features` flag. Metadata resolves the feature
@@ -446,6 +476,79 @@ print(parts[1])
 PY
 }
 
+forged_case() {
+  local name="$1"
+  local base="$2"
+  local label="$3"
+  local expected="$4"
+  local nosniff="$5"
+  local referrer="$6"
+  local acao="$7"
+  local header_name="$8"
+  local header_value="$9"
+  local forbidden="${10}"
+  local headers="${WORK}/${name}.${label}.headers"
+  local body="${WORK}/${name}.${label}.body"
+  headers="${headers// /-}"
+  body="${body// /-}"
+  fetch_headers "$headers" "$body" "${base}/" -H "${header_name}: ${header_value}"
+  local code
+  code="$(http_code "$headers")"
+  log "${label} -> ${code}"
+  if [[ "$code" != "$expected" ]]; then
+    log "FAIL ${label}: expected ${expected}"
+    cat "$headers" | tee -a "$EVIDENCE"
+    exit 1
+  fi
+  assert_headers "$headers" "$nosniff" "$referrer" "$acao" "${label}"
+  if [[ -n "$forbidden" ]] && grep -q -F "$forbidden" "$body"; then
+    log "FAIL ${label} reflected ${forbidden}"
+    exit 1
+  fi
+  log "PASS ${label}"
+}
+
+post_echo_len() {
+  local name="$1"
+  local base="$2"
+  local label="$3"
+  local nosniff="$4"
+  local referrer="$5"
+  local acao="$6"
+  shift 6
+  local payload="${WORK}/${name}.${label// /-}.echo.json"
+  python3 - "$payload" <<'PY'
+import sys
+open(sys.argv[1], "w", encoding="ascii").write('["' + ("a" * 61440) + '"]')
+PY
+  local size
+  size="$(wc -c <"$payload")"
+  log "${label} 60 KiB POST request bytes=${size} payload characters=61440"
+  if [[ "$size" -ne 61444 ]]; then
+    log "FAIL ${label} 60 KiB POST request size ${size}, expected 61444"
+    exit 1
+  fi
+  local headers="${WORK}/${name}.${label// /-}.echo.headers"
+  local body="${WORK}/${name}.${label// /-}.echo.body"
+  fetch_headers "$headers" "$body" "${base}/api/echo_len" \
+    -X POST \
+    -H 'content-type: application/json' \
+    -H 'accept: application/json' \
+    --data-binary @"$payload" \
+    "$@"
+  local code response
+  code="$(http_code "$headers")"
+  response="$(tr -d '\n' <"$body")"
+  log "${label} POST /api/echo_len -> ${code} body=${response} response_bytes=$(wc -c <"$body")"
+  if [[ "$code" != "200" || "$response" != "61440" ]]; then
+    log "FAIL ${label} 60 KiB POST"
+    cat "$headers" | tee -a "$EVIDENCE"
+    exit 1
+  fi
+  assert_headers "$headers" "$nosniff" "$referrer" "$acao" "${label} POST /api/echo_len"
+  log "PASS ${label} 60 KiB POST"
+}
+
 post_server_fn() {
   local name="$1"
   local base="$2"
@@ -529,6 +632,7 @@ serve_one() {
   fetch_headers "$home_headers" "$home_body" "http://127.0.0.1:3000/"
   grep -q "$name" "$home_body"
   grep -q "Count Value" "$home_body"
+  log "PASS ${name} standard SSR"
   assert_headers "$home_headers" 1 0 0 "${name} standard GET /"
   local missing_headers="${WORK}/${name}.standard.missing.headers"
   local missing_body="${WORK}/${name}.standard.missing.body"
@@ -543,6 +647,15 @@ serve_one() {
   assert_headers "$missing_headers" 1 0 0 "${name} standard GET /missing-page"
   post_server_fn "$name" "http://127.0.0.1:3000" get_count "${name} standard" 1 0 0
   post_server_fn "$name" "http://127.0.0.1:3000" increment_count "${name} standard" 1 0 0
+  post_echo_len "$name" "http://127.0.0.1:3000" "${name} standard" 1 0 0
+  forged_case "$name" "http://127.0.0.1:3000" "${name} standard forged x-wasi-auth-context" 200 1 0 0 \
+    x-wasi-auth-context not-an-envelope not-an-envelope
+  forged_case "$name" "http://127.0.0.1:3000" "${name} standard forged authorization" 200 1 0 0 \
+    authorization "Bearer not-a-token" not-a-token
+  forged_case "$name" "http://127.0.0.1:3000" "${name} standard forged session cookie" 200 1 0 0 \
+    cookie "wasi_auth_dev_session=1" wasi_auth_dev_session
+  forged_case "$name" "http://127.0.0.1:3000" "${name} standard forged x-forwarded-user" 200 1 0 0 \
+    x-forwarded-user forged-user forged-user
   check_asset "$name" "http://127.0.0.1:3000" "$pkg" "$asset" "${name} standard" 0 0
   cleanup_spin
   log "PASS ${name} standard"
@@ -584,6 +697,7 @@ build_secure_defaults() {
   test -f "$built"
   log "secure-defaults.wasm ($(wc -c <"$built") bytes) from ${got}"
   printf '%s\n' "$built" >"${WORK}/secure-defaults.path"
+  assert_wasip3_tree "$dest" "secure-defaults ${MIDDLEWARE_REV}" -p wasi-http-middleware-secure-defaults
 }
 
 serve_middleware() {
@@ -603,6 +717,9 @@ serve_middleware() {
   local home_headers="${WORK}/${name}.middleware.home.headers"
   local home_body="${WORK}/${name}.middleware.home.body"
   fetch_headers "$home_headers" "$home_body" "http://127.0.0.1:3000/"
+  grep -q "$name" "$home_body"
+  grep -q "Count Value" "$home_body"
+  log "PASS ${name} middleware SSR"
   assert_headers "$home_headers" 1 1 0 "${name} middleware GET / without Origin"
   local origin_headers="${WORK}/${name}.middleware.origin.headers"
   local origin_body="${WORK}/${name}.middleware.origin.body"
@@ -622,6 +739,15 @@ serve_middleware() {
   post_server_fn "$name" "http://127.0.0.1:3000" get_count "${name} middleware" 1 1 0
   post_server_fn "$name" "http://127.0.0.1:3000" increment_count "${name} middleware-origin" 1 1 1 "$origin" \
     -H "origin: ${origin}"
+  post_echo_len "$name" "http://127.0.0.1:3000" "${name} middleware" 1 1 0
+  forged_case "$name" "http://127.0.0.1:3000" "${name} middleware forged x-wasi-auth-context" 200 1 1 0 \
+    x-wasi-auth-context not-an-envelope not-an-envelope
+  forged_case "$name" "http://127.0.0.1:3000" "${name} middleware forged authorization" 503 1 1 0 \
+    authorization "Bearer not-a-token" not-a-token
+  forged_case "$name" "http://127.0.0.1:3000" "${name} middleware forged session cookie" 200 1 1 0 \
+    cookie "wasi_auth_dev_session=1" wasi_auth_dev_session
+  forged_case "$name" "http://127.0.0.1:3000" "${name} middleware forged x-forwarded-user" 200 1 1 0 \
+    x-forwarded-user forged-user forged-user
   check_asset "$name" "http://127.0.0.1:3000" "$pkg" "$asset" "${name} middleware" 0 0 \
     -H "origin: ${origin}"
   cleanup_spin
@@ -670,13 +796,20 @@ serve_trusted() {
   local home_body="${WORK}/${name}.ingress.home.body"
   fetch_headers "$home_headers" "$home_body" "${base}/"
   grep -q "$name" "$home_body"
+  grep -q "Count Value" "$home_body"
+  log "PASS ${name} trusted-ingress SSR"
   assert_headers "$home_headers" 1 0 0 "${name} trusted-ingress anonymous GET /"
   post_server_fn "$name" "$base" get_count "${name} trusted-ingress" 1 0 0
+  post_echo_len "$name" "$base" "${name} trusted-ingress" 1 0 0
   check_asset "$name" "$base" "$pkg" "$asset" "${name} trusted-ingress" 0 0
-  local denied_headers="${WORK}/${name}.ingress.empty-auth.headers"
-  local denied_body="${WORK}/${name}.ingress.empty-auth.body"
-  fetch_headers "$denied_headers" "$denied_body" "${base}/" -H 'authorization: Bearer not-a-token'
-  expect_status "$denied_headers" 503 "${name} trusted-ingress empty key with Authorization"
+  forged_case "$name" "$base" "${name} trusted-ingress empty forged x-wasi-auth-context" 503 0 0 0 \
+    x-wasi-auth-context not-an-envelope not-an-envelope
+  forged_case "$name" "$base" "${name} trusted-ingress empty forged authorization" 503 0 0 0 \
+    authorization "Bearer not-a-token" not-a-token
+  forged_case "$name" "$base" "${name} trusted-ingress empty forged session cookie" 503 0 0 0 \
+    cookie "wasi_auth_dev_session=1" wasi_auth_dev_session
+  forged_case "$name" "$base" "${name} trusted-ingress empty forged x-forwarded-user" 200 1 0 0 \
+    x-forwarded-user forged-user forged-user
   cleanup_spin
 
   local key_file="${WORK}/${name}.ingress.key"
@@ -717,7 +850,10 @@ PY
     -H 'x-wasi-auth-context: not-an-envelope' \
     -H 'x-request-id: req-1'
   expect_status "$bogus_headers" 401 "${name} trusted-ingress bogus envelope"
+  forged_case "$name" "$base" "${name} trusted-ingress keyed forged x-forwarded-user" 200 1 0 0 \
+    x-forwarded-user forged-user forged-user
   post_server_fn "$name" "$base" increment_count "${name} trusted-ingress-keyed" 1 0 0
+  post_echo_len "$name" "$base" "${name} trusted-ingress-keyed" 1 0 0
   check_asset "$name" "$base" "$pkg" "$asset" "${name} trusted-ingress-keyed" 0 0 \
     -H 'origin: http://127.0.0.1:3009'
   cleanup_spin

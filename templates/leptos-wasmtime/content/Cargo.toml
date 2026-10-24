@@ -19,9 +19,11 @@ leptos_meta = { version = "=0.8.7", default-features = false }
 leptos_router = { version = "=0.8.17", default-features = false }
 # Temporary pin of the 0.4.2 line on wasip3 0.9 (`spawn_local`).
 # https://github.com/codeitlikemiley/leptos_wasi/pull/41
+# wasip3 =0.9.0 pins wit-bindgen =0.62.0. wasip2 still resolves wit-bindgen
+# 0.57.1 with no features. Do not enable `inter-task-wakeup` on 0.57.x.
 # Final target: a crates.io `leptos-wasi-runtime` release that depends on
-# wasip3 =0.9.0. Do not enable wit-bindgen `inter-task-wakeup` on 0.57.x.
-leptos_wasi = { package = "leptos-wasi-runtime", git = "https://github.com/codeitlikemiley/leptos_wasi", rev = "87e1476938c2b23d598a3fcc74a7acb094aac855", version = "0.4.2", default-features = false, features = ["wasip3"], optional = true }
+# wasip3 =0.9.0.
+leptos_wasi = { package = "leptos-wasi-runtime", git = "https://github.com/codeitlikemiley/leptos_wasi", rev = "d4f512eb18b64c8f78c385365be28acc023462eb", version = "0.4.2", default-features = false, features = ["wasip3"], optional = true }
 server_fn = { version = "=0.8.13", default-features = false, features = ["axum-no-default"] }
 # crates.io spin-sdk 7.0.0 is wasip3 0.7.1 (`spawn`). This rev is
 # https://github.com/codeitlikemiley/spin-rust-sdk/pull/1 and exports
