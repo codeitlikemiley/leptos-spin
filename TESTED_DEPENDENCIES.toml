@@ -29,6 +29,10 @@ server_fn = "=0.8.13"
 wasip3 = "=0.9.0"
 wasip3_resolved = "0.9.0+wasi-0.3.0"
 wit_bindgen = "=0.62.0"
+# wasip2 1.0.4, reached through leptos -> rand -> getrandom on
+# wasm32-wasip2, also resolves wit-bindgen 0.57.1 with features = [].
+# That is the p2 edge, not a second wasip3. Do not enable inter-task-wakeup.
+wit_bindgen_wasip2 = "0.57.1"
 wasm-bindgen = "=0.2.129"
 wasi-auth = "=0.1.0-rc.5"
 # Temporary git pin. crates.io spin-sdk 7.0.0 is wasip3 0.7.1.

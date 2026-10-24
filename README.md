@@ -4,7 +4,7 @@ Spin templates for a Leptos application exported as a final `wasi:http/handler@0
 
 The target guest set is Leptos 0.8.22, `server_fn` 0.8.13, `wasip3` 0.9.0 (`wit-bindgen` 0.62.0), and `wasm-bindgen` 0.2.129. `spin-sdk` is an optional git pin at `3cf30012b50a1afb750dac3d28aa6da4a32c3468` and is not linked into the standard component. `TESTED_DEPENDENCIES.toml` records which of those pins Cargo actually resolved. The declared MSRV is 1.94. This repository pins and tests toolchain 1.99.0, not floating stable.
 
-`leptos-wasi-runtime` is git pin `87e1476938c2b23d598a3fcc74a7acb094aac855` (version 0.4.2, `wasip3` 0.9, `spawn_local`). The final target is a crates.io `leptos-wasi-runtime` release on `wasip3` 0.9. Do not enable `wit-bindgen` feature `inter-task-wakeup` on 0.57.x.
+`leptos-wasi-runtime` is git pin `87e1476938c2b23d598a3fcc74a7acb094aac855` (version 0.4.2, `wasip3` 0.9, `spawn_local`). The final target is a crates.io `leptos-wasi-runtime` release on `wasip3` 0.9. The `wasm32-wasip2` target also links `wasip2` 1.0.4, which pins `wit-bindgen` 0.57.1 with no features. Do not enable `inter-task-wakeup` on that 0.57.x crate.
 
 | Template | What `spin new` creates |
 |---|---|

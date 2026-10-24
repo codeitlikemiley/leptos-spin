@@ -180,13 +180,41 @@ errors = []
 for name in interesting:
     actual = sorted(resolved.get(name, ()))
     lines.append(f"  {name}={actual}")
-    if name in ("wasi-auth", "spin-sdk"):
+    if name in ("wasi-auth", "spin-sdk", "wit-bindgen"):
         continue
     if actual != [wanted[name]]:
         errors.append(f"{name}: resolved {actual}, expected [{wanted[name]}]")
-wit = resolved.get("wit-bindgen", set())
-if wit - {"0.62.0", "0.51.0"}:
-    errors.append(f"unexpected wit-bindgen versions: {sorted(wit)}")
+# wasip2 1.0.4 (getrandom on wasm32-wasip2) pins wit-bindgen 0.57.1 with
+# default features off. That is not the wasip3 0.7 binding. inter-task-wakeup
+# on 0.57.x traps under Spin 4.2.5, so the feature set must stay empty.
+wit_nodes = []
+for node in meta["resolve"]["nodes"]:
+    pkg = by_id[node["id"]]
+    if pkg["name"] != "wit-bindgen":
+        continue
+    parents = sorted({
+        by_id[other["id"]]["name"]
+        for other in meta["resolve"]["nodes"]
+        for dep in other.get("deps", [])
+        if dep["pkg"] == node["id"]
+    })
+    wit_nodes.append((pkg["version"], sorted(node.get("features") or []), parents))
+versions = {version for version, _, _ in wit_nodes}
+if "0.62.0" not in versions:
+    errors.append(f"wit-bindgen 0.62.0 missing: {sorted(versions)}")
+for version, features, parents in wit_nodes:
+    lines.append(f"  wit-bindgen {version} features={features} parents={parents}")
+    if version == "0.62.0":
+        if "inter-task-wakeup" in features:
+            errors.append("wit-bindgen 0.62.0 enables inter-task-wakeup")
+        continue
+    if version == "0.57.1":
+        if features:
+            errors.append(f"wit-bindgen 0.57.1 features must stay empty, got {features}")
+        if parents != ["wasip2"]:
+            errors.append(f"wit-bindgen 0.57.1 parents {parents}, expected ['wasip2']")
+        continue
+    errors.append(f"unexpected wit-bindgen {version} features={features} parents={parents}")
 wasip3_versions = resolved.get("wasip3", set())
 if any(v.startswith("0.4.") or v.startswith("0.6.") for v in wasip3_versions):
     errors.append(f"old wasip3 still resolved: {sorted(wasip3_versions)}")
