@@ -88,9 +88,9 @@ fn enforce_trusted_ingress<B>(
     }
 
     let codec = ingress_codec().map_err(|()| http::StatusCode::SERVICE_UNAVAILABLE)?;
-    let envelope = single_header(request.headers(), AUTH_CONTEXT_HEADER)
+    let envelope = single_header(request.headers(), &AUTH_CONTEXT_HEADER)
         .ok_or(http::StatusCode::UNAUTHORIZED)?;
-    let request_id = single_header(request.headers(), REQUEST_ID_HEADER)
+    let request_id = single_header(request.headers(), &REQUEST_ID_HEADER)
         .ok_or(http::StatusCode::UNAUTHORIZED)?;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
