@@ -1,50 +1,41 @@
-# Makefile for building app for different WASI runtimes
-.PHONY: help spin wasmtime clean run
+# Build the same component for Wasmtime or Spin.
+.PHONY: help spin wasmtime middleware trusted-ingress clean
 
-# Default target
 help:
-	@echo "Available targets:"
-	@echo "  make spin     - Build and run with Spin"
-	@echo "  make wasmtime - Build and run with Wasmtime"
-	@echo "  make clean    - Clean build artifacts"
+	@echo "  make spin              - standard profile (spin.toml) via Spin"
+	@echo "  make wasmtime          - standard profile via Wasmtime serve"
+	@echo "  make middleware        - print the opt-in composition command"
+	@echo "  make trusted-ingress   - print the opt-in HMAC ingress command"
+	@echo "  make clean             - remove build artifacts"
 
-# Run target alias
-run: wasmtime
-
-# Build and run with Spin
 spin:
-	@echo "Building for Spin runtime..."
-	@mkdir -p .spin
-	WASI_RUNTIME=spin cargo leptos build --release
-	WASI_RUNTIME=spin LEPTOS_OUTPUT_NAME={{project-name | snake_case}} cargo build --lib --target wasm32-wasip2 --release --no-default-features --features ssr
-	@echo "Built: target/wasm32-wasip2/release/{{project-name | snake_case}}.wasm (for Spin)"
-	@echo "Starting Spin..."
-	spin up
+	spin build --up
 
-# Build and run with Wasmtime
 wasmtime:
-	@echo "Building for Wasmtime runtime..."
-	WASI_RUNTIME=wasmtime cargo leptos build --release
-	WASI_RUNTIME=wasmtime LEPTOS_OUTPUT_NAME={{project-name | snake_case}} cargo build --lib --target wasm32-wasip2 --release --no-default-features --features ssr --target-dir target/wasmtime
-	@echo "Built: target/wasmtime/wasm32-wasip2/release/{{project-name | snake_case}}.wasm (for Wasmtime)"
-	@echo "Starting Wasmtime serve..."
-	@echo "Serving at http://127.0.0.1:3000"
-	@mkdir -p ./data
+	cargo leptos build --release --frontend-only
+	LEPTOS_OUTPUT_NAME={{project-name | snake_case}} cargo build --lib --target wasm32-wasip2 --release --no-default-features --features ssr --target-dir target/wasmtime
 	wasmtime serve \
 		-W component-model-async=y \
 		-S p3=y \
 		-S cli=y \
 		-S http=y \
-		--dir=./target/site/pkg::/ \
-		--dir=./data::/data \
+		--dir=./target/site::/site \
 		--env=LEPTOS_OUTPUT_NAME={{project-name | snake_case}} \
-		--env=LEPTOS_SITE_ROOT=/ \
+		--env=LEPTOS_SITE_ROOT=/site \
 		--env=LEPTOS_SITE_PKG_DIR=pkg \
 		--addr 127.0.0.1:3000 \
 		target/wasmtime/wasm32-wasip2/release/{{project-name | snake_case}}.wasm
 
-# Clean target
+middleware:
+	@echo "Opt-in only. Build the standard component, then compose. Do not use a trusted-ingress artifact."
+	@echo "./deploy/compose-middleware.sh target/wasm32-wasip2/release/{{project-name | snake_case}}.wasm target/wasm32-wasip2/release/{{project-name | snake_case}}-middleware.wasm <request-id.wasm> <security-headers.wasm> <cors.wasm> <authn-policy.wasm>"
+	@echo "spin up -f spin.middleware.toml"
+
+trusted-ingress:
+	@echo "Opt-in only. This profile does not compose middleware."
+	@echo "spin build -f spin.trusted-ingress.toml"
+	@echo "spin up -f spin.trusted-ingress.toml --variable trusted_ingress_key=$$AUTH_TRUSTED_INGRESS_KEY_BASE64"
+
 clean:
 	cargo clean
-	rm -rf target/site target/wasmtime ./data
-	rm -rf .spin
+	rm -rf target/site target/wasmtime target/trusted-ingress

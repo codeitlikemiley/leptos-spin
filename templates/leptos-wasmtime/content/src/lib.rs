@@ -3,7 +3,7 @@ mod app;
 #[cfg(feature = "ssr")]
 mod server;
 
-/// This is the entrypoint called by the JS "igniter" script.
+/// Browser hydration entrypoint. Not part of the server component.
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {

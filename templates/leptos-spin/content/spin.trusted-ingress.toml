@@ -1,0 +1,49 @@
+spin_manifest_version = 2
+
+[application]
+name = "{{project-name | kebab_case}}-trusted-ingress"
+version = "0.1.0"
+authors = ["{{authors}}"]
+description = "Private Leptos terminal behind the wasi-auth HMAC ingress."
+
+[variables]
+# 32 decoded bytes, standard base64. Inject at runtime. Never commit a key.
+trusted_ingress_key = { required = false, secret = true, default = "" }
+
+# Bind the loopback port the wasi-auth ingress expects as its backend.
+# The public listener is the ingress, not this component.
+[application.trigger.http]
+address = "127.0.0.1:3009"
+
+# Profile 3 of 3. No composed middleware. The native ingress applies CORS,
+# response security headers, and authentication, then seals an HMAC context.
+[[trigger.http]]
+route = "/..."
+component = "{{project-name | kebab_case}}"
+executor = { type = "http" }
+
+[component.{{project-name | kebab_case}}]
+source = "target/trusted-ingress/wasm32-wasip2/release/{{project-name | snake_case}}.wasm"
+allowed_outbound_hosts = []
+files = [{ source = "target/site", destination = "/site" }]
+[component.{{project-name | kebab_case}}.environment]
+LEPTOS_OUTPUT_NAME = "{{project-name | snake_case}}"
+LEPTOS_SITE_ROOT = "/site"
+LEPTOS_SITE_PKG_DIR = "pkg"
+AUTH_TRUSTED_INGRESS_AUDIENCE = "fullstack-app"
+AUTH_TRUSTED_INGRESS_MAX_AGE_SECONDS = "5"
+AUTH_TRUSTED_INGRESS_KEY_BASE64 = "{{ trusted_ingress_key }}"
+[component.{{project-name | kebab_case}}.build]
+command = "cargo leptos build --release --frontend-only && LEPTOS_OUTPUT_NAME={{project-name | snake_case}} cargo build --lib --target wasm32-wasip2 --release --no-default-features --features ssr,trusted-ingress --target-dir target/trusted-ingress"
+watch = ["src/**/*.rs", "Cargo.toml"]
+
+# Assets stay public at the Spin trigger. The ingress in front of this app
+# must exempt `/pkg/...` and must not also compose portable authn middleware.
+[[trigger.http]]
+route = "/pkg/..."
+component = "{{project-name | kebab_case}}-pkg"
+
+[component.{{project-name | kebab_case}}-pkg]
+source = { url = "https://github.com/fermyon/spin-fileserver/releases/download/v0.1.0/spin_static_fs.wasm", digest = "sha256:96c76d9af86420b39eb6cd7be5550e3cb5d4cc4de572ce0fd1f6a29471536cb4" }
+files = [{ source = "target/site/pkg", destination = "/" }]
+environment = { CACHE_CONTROL = "no-cache" }

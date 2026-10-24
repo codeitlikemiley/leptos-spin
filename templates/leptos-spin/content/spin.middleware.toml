@@ -1,0 +1,40 @@
+spin_manifest_version = 2
+
+[application]
+name = "{{project-name | kebab_case}}-middleware"
+version = "0.1.0"
+authors = ["{{authors}}"]
+description = "Opt-in precomposed WASI HTTP middleware around the standard component."
+
+# Profile 2 of 3. `spin up` does not use this file.
+# Build the standard component first (`--features ssr` only), then
+# `./deploy/compose-middleware.sh`. Do not point this manifest at a
+# trusted-ingress build: the ingress already owns auth, CORS, and security
+# headers, and composing them again would apply that policy twice.
+[[trigger.http]]
+route = "/..."
+component = "{{project-name | kebab_case}}-middleware"
+executor = { type = "http" }
+
+[component.{{project-name | kebab_case}}-middleware]
+source = "target/wasm32-wasip2/release/{{project-name | snake_case}}-middleware.wasm"
+allowed_outbound_hosts = []
+files = [{ source = "target/site", destination = "/site" }]
+[component.{{project-name | kebab_case}}-middleware.environment]
+LEPTOS_OUTPUT_NAME = "{{project-name | snake_case}}"
+LEPTOS_SITE_ROOT = "/site"
+LEPTOS_SITE_PKG_DIR = "pkg"
+# Read by the composed CORS component only. The Leptos guest ignores these.
+WASI_MIDDLEWARE_CORS_ORIGINS = "http://127.0.0.1:3000"
+WASI_MIDDLEWARE_CORS_METHODS = "GET,HEAD,POST"
+WASI_MIDDLEWARE_CORS_HEADERS = "content-type,x-request-id"
+WASI_MIDDLEWARE_CORS_ALLOW_CREDENTIALS = "false"
+
+[[trigger.http]]
+route = "/pkg/..."
+component = "{{project-name | kebab_case}}-pkg"
+
+[component.{{project-name | kebab_case}}-pkg]
+source = { url = "https://github.com/fermyon/spin-fileserver/releases/download/v0.1.0/spin_static_fs.wasm", digest = "sha256:96c76d9af86420b39eb6cd7be5550e3cb5d4cc4de572ce0fd1f6a29471536cb4" }
+files = [{ source = "target/site/pkg", destination = "/" }]
+environment = { CACHE_CONTROL = "no-cache" }

@@ -1,25 +1,23 @@
 # {{project-name}}
 
-This project was generated from the `leptos-spin` template. It demonstrates running a Leptos application utilizing the native WASI Preview 3 (WASIp3) task scheduling and standard HTTP wrappers under Spin v4.
+Generated from the `leptos-spin` template. The server is a final `wasi:http/handler@0.3.0` component built with `leptos-wasi-runtime` 0.4.2 and `wasip3` 0.7.0. `spin up` runs that component with no middleware and no trusted ingress.
 
 ## Prerequisites
 
-- **Rust Toolchain:** Version 1.93.0 or later (required by `spin-sdk` v6.0.0).
-- **Rust target:** `rustup target add wasm32-wasip2`
-- **Spin CLI:** Version 4.0.0 or later.
-- **Cargo Leptos:** `cargo install --locked cargo-leptos`
+- Rust 1.99.0 (`rust-toolchain.toml`). The library MSRV is 1.93.0.
+- Targets: `wasm32-wasip2`, `wasm32-unknown-unknown`
+- `cargo-leptos` 0.3.7
+- `wasm-bindgen-cli` 0.2.126 (must match the crate pin)
+- Spin 4.2.5 for `spin up`. Wasmtime 46.0.1 is the upstream correctness reference.
 
-## Build and Run
+## Standard app
 
 ```bash
 spin build --up
 ```
 
-Once running, access the application at `http://127.0.0.1:3000`.
+Open `http://127.0.0.1:3000`. Server functions are `POST /api/get_count` and `POST /api/increment_count`. Static client assets are `GET /pkg/{{project-name | snake_case}}.js` and the matching `.wasm` and `.css` files.
 
-## Execution Model
+## Other profiles
 
-Unlike the WASIp2 approach which manages a cooperative polling loop inside the guest component:
-1. `{{project-name}}` initializes the host-level async task spawner (`init_wasip3_spawner`).
-2. When futures are spawned (e.g. via `leptos::spawn_local`), they are delegated directly to the host runtime via `wasip3::wit_bindgen::spawn`.
-3. The HTTP trigger uses the native `http` executor in `spin.toml`, running the server as a native WASI HTTP component.
+See [deploy/README.md](deploy/README.md). Middleware composition and the HMAC trusted ingress are separate manifests. Do not enable both: the ingress already applies authentication, CORS, and security headers.

@@ -1,0 +1,32 @@
+# Direct dependency set resolved and runtime-tested by scripts/check-generated-app.sh.
+# Versions are exact. Do not float them: wasip3 0.7.1+ and wasm-bindgen 0.2.129
+# exist on crates.io but are not the set locked by leptos-wasi-runtime 0.4.2.
+#
+# Rust MSRV of leptos-wasi-runtime 0.4.2 is 1.93.0. The toolchain this
+# repository pins and tests is 1.99.0 (rustc 1.99.0, 2026-09-28).
+
+[toolchain]
+rust = "1.99.0"
+rust_msrv = "1.93.0"
+cargo_leptos = "0.3.7"
+wasm_bindgen_cli = "0.2.126"
+spin = "4.2.5"
+# Wasmtime 46.0.1 is the leptos_wasi 0.4.2 correctness reference.
+# This repository's generation check serves the app with tagged Spin.
+wasmtime_reference = "46.0.1"
+
+[crates]
+leptos = "=0.8.20"
+leptos_meta = "=0.8.6"
+leptos_router = "=0.8.14"
+server_fn = "=0.8.13"
+leptos-wasi-runtime = "=0.4.2"
+wasip3 = "=0.7.0"
+wasm-bindgen = "=0.2.126"
+wasi-auth = "=0.1.0-rc.5"
+
+[profiles]
+# Default `spin up` uses only the standard profile.
+standard = "no middleware, no trusted-ingress feature"
+middleware = "opt-in wac composition; not built by spin.toml"
+trusted_ingress = "opt-in HMAC guest; separate manifest and target dir"
